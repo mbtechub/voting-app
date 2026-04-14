@@ -1,0 +1,1384 @@
+Poll Voting Platform
+Overview
+
+This project is a paid, public poll voting platform built to allow users to buy votes for nominees across one or more polls in a secure, auditable, and scalable way. The platform uses Paystack for payment collection, Oracle Database for persistence, NestJS for the backend API, and Next.js for the frontend experience.
+
+The system is intentionally designed so that payment success is not trusted from the browser. The browser can start a payment, but only the backend webhook is allowed to finalize votes. This makes the platform resilient against duplicate submissions, browser tampering, and payment spoofing.
+
+At its core, the platform solves five major problems well:
+
+collecting paid votes across multiple polls
+
+applying votes only after verified payment
+
+preventing duplicate application of the same payment
+
+generating immutable receipts and PDFs
+
+giving admins controlled operational visibility without exposing sensitive internals
+
+Business Purpose
+
+The application is meant for monetized public polling, where each vote has a price. A user can browse active polls, choose a nominee, select a quantity of votes, place those votes into a cart, and then pay once through Paystack. After payment is verified, the system applies the votes to the selected nominees and stores complete financial and audit records.
+
+The platform supports the idea that one payment may contain votes for multiple polls, and that those votes may not all remain valid by the time payment is finalized. Because of that, the system supports partial application. If a payment comes in for multiple items and some are no longer valid, valid items are still applied and invalid ones are skipped and recorded.
+
+Core Design Principles
+Webhook is the source of truth
+
+The browser never decides whether votes are counted. The frontend may redirect a user after payment, but actual vote application is handled only by the backend after Paystack webhook verification.
+
+Idempotency is mandatory
+
+The same payment reference must never apply the same cart item twice. This is enforced in the vote logs layer so retries, duplicate webhooks, or replay attempts do not create duplicate votes.
+
+Receipts are immutable
+
+Receipts are treated as finalized evidence. Once a receipt reaches a finalized state, its core business data must not change. Only the PDF hash may be set later in a tightly controlled way.
+
+Auditability matters
+
+Important system actions are logged. Payment processing, admin actions, and webhook handling all leave traceable records.
+
+Anonymous public voting
+
+The platform is intentionally built without voter accounts. Voting is public and payment-based, not identity-based.
+
+Technology Stack
+Backend
+
+NestJS powers the backend API. It handles public endpoints, admin operations, payment initiation, webhook processing, receipt generation, analytics, and authorization.
+
+Frontend
+
+Next.js App Router powers the frontend. It handles public poll browsing, nominee selection, cart display, receipt display, and admin interface pages.
+
+Database
+
+Oracle Database is the persistent store for all core records: polls, nominees, carts, payments, vote logs, receipts, audit logs, and webhook events.
+
+Payment Provider
+
+Paystack is used for payment initiation and verification. The user is redirected to Paystack for payment, while the backend listens for webhook notifications to confirm and finalize processing.
+
+Authentication
+
+Admin authentication uses JWT with HttpOnly cookies in the frontend architecture. Role-based access control protects admin-only operations.
+
+High-Level System Architecture
+
+The architecture is split into three main layers.
+
+Public frontend
+
+This includes the landing page, poll pages, cart pages, and receipt pages. Users can browse polls, select nominees, choose vote quantities, create carts, and initiate payment.
+
+Backend API
+
+This includes public APIs, payment APIs, admin APIs, receipt APIs, and webhook endpoints. It contains the business logic and is the only layer allowed to finalize votes.
+
+Database
+
+Oracle stores all durable records and enforces many integrity rules using constraints, sequences, triggers, and indexed lookups.
+
+The basic flow is:
+
+User selects poll and nominee on frontend → frontend creates cart via backend → backend initiates Paystack payment → user pays on Paystack → Paystack sends webhook to backend → backend verifies and finalizes payment → votes applied → receipt generated → results updated.
+
+Main Functional Areas
+Public Poll Experience
+
+The public side of the platform is responsible for exposing active polls and nominees to end users.
+
+A user can:
+
+view active polls
+
+view nominees inside a poll
+
+choose how many votes to buy
+
+add votes to a cart
+
+review cart contents
+
+proceed to payment
+
+view receipt after payment
+
+The poll page is tied to active poll windows. Poll visibility depends on start date, end date, and current status.
+
+Nominees may inherit price from the parent poll if a nominee-specific price is not defined. This is the main pricing model used by the system.
+
+Cart System
+
+The cart system allows multiple vote selections to be grouped into one payment flow.
+
+Cart model
+
+A cart has:
+
+a numeric internal id
+
+a public cart UUID
+
+a status
+
+a total amount
+
+a created timestamp
+
+Cart item model
+
+Each cart item stores:
+
+cart id
+
+poll id
+
+nominee id
+
+vote quantity
+
+price per vote
+
+subtotal
+
+Cart behavior
+
+A cart starts as pending. Users can add one or more items before payment is initiated. The system calculates item subtotal and total cart amount. Once a verified payment is processed, cart status is updated to either paid or partially applied.
+
+Important design note
+
+The cart UUID is the frontend-safe reference, while the numeric cart id is the database internal identifier. The backend often looks up carts by UUID for public operations.
+
+Payment Flow
+
+The payment subsystem handles initiation, reference generation, amount tracking, and status transitions.
+
+Payment initiation
+
+The backend creates a payment record linked to a cart, generates a Paystack reference, and sends the user to Paystack authorization.
+
+Payment record
+
+A payment stores:
+
+payment id
+
+cart id
+
+paystack reference
+
+amount
+
+status
+
+raw response
+
+paid timestamp
+
+created timestamp
+
+Payment status lifecycle
+
+Typical statuses include:
+
+INITIATED
+
+SUCCESS
+
+FAILED
+
+ABANDONED
+
+PARTIALLY_APPLIED
+
+These statuses support real-world payment behavior. The platform does not assume all successful payment records result in all votes being applied. Partial application is a first-class scenario.
+
+Webhook Processing
+
+Webhook processing is the most important backend responsibility.
+
+Why webhook matters
+
+The user browser is not trusted to confirm payment completion. Only a verified server-to-server webhook may finalize the payment and apply votes.
+
+Webhook responsibilities
+
+When a Paystack webhook arrives, the backend:
+
+validates the webhook signature
+
+parses the event payload
+
+locates the payment record by reference
+
+verifies transaction consistency
+
+moves payment to final state
+
+processes cart items
+
+applies valid votes
+
+records skipped items
+
+updates results
+
+generates or updates receipt data
+
+stores an audit trail in webhook events
+
+Webhook event logging
+
+Each webhook interaction is persisted with fields such as:
+
+provider
+
+route
+
+reference
+
+signature presence
+
+signature validity
+
+processed flag
+
+result
+
+error message
+
+request hash
+
+timing metrics
+
+raw headers and payload
+
+This gives the system a durable operational trace of webhook behavior.
+
+Vote Application and Idempotency
+
+Vote application is not just a simple increment. It is carefully controlled.
+
+Vote application process
+
+For each cart item associated with a finalized payment, the backend checks whether:
+
+the poll is still valid
+
+the nominee belongs to the correct poll
+
+pricing information exists
+
+the cart item has not already been applied for that payment reference
+
+If valid, votes are applied into results. If invalid, the item is marked skipped.
+
+Vote logs
+
+Vote logs are the idempotency core of the system.
+
+Each vote log stores:
+
+cart id
+
+payment id
+
+payment reference
+
+poll id
+
+nominee id
+
+vote quantity
+
+price per vote
+
+subtotal
+
+apply status
+
+skip reason
+
+cart item id
+
+A uniqueness rule on payment reference plus cart item ensures the same cart item is not applied twice for the same payment.
+
+Apply statuses
+
+Typical values:
+
+APPLIED
+
+SKIPPED
+
+This supports both complete success and partial application scenarios.
+
+Results System
+
+The results system stores aggregated counts per poll and nominee combination.
+
+Election results table
+
+Although the business language has shifted from election/candidate to poll/nominee, the database still uses the historical names in many places. ELECTION_RESULTS stores:
+
+poll id
+
+nominee id
+
+vote count
+
+Result updates
+
+Vote counts are updated only after verified payment finalization, not during cart creation and not from the frontend.
+
+Admin live results
+
+Super Admins can view live results through protected admin routes. Public result exposure is intentionally restricted and may be allowed later only after poll closure, depending on business policy.
+
+Receipt System
+
+The receipt system is one of the strongest parts of the platform.
+
+Purpose
+
+A receipt is a durable, verifiable snapshot of what the system believed about a payment and its vote application state at a particular point in time.
+
+Receipt record
+
+A receipt stores:
+
+unique reference
+
+payment id
+
+cart id
+
+status
+
+amount
+
+currency
+
+snapshot json
+
+snapshot hash
+
+PDF version
+
+PDF hash
+
+created timestamp
+
+Snapshot JSON
+
+This contains the full structured receipt data used for rendering and verification, including:
+
+reference
+
+payment information
+
+cart information
+
+line items
+
+summary totals
+
+PDF link
+
+Snapshot hash
+
+The hash protects integrity. It lets the system compare stored receipt content against generated or fetched content to verify consistency.
+
+PDF generation
+
+Receipt PDFs are generated from the stored snapshot, not by re-deriving current live data. That preserves immutability and ensures historical correctness.
+
+Receipt statuses
+
+The schema must allow the backend flow used by the system:
+
+INITIATED
+
+SUCCESS
+
+PARTIALLY_APPLIED
+
+FAILED
+
+Receipt immutability trigger
+
+After finalization, receipts become immutable. The system allows only the tightly controlled setting of PDF_HASH if it was not previously set. Core data changes are blocked.
+
+Admin System
+
+The admin system provides controlled operational management.
+
+Roles
+
+The main roles are:
+
+SUPER_ADMIN
+
+ADMIN
+
+Super Admin capabilities
+
+A Super Admin can generally:
+
+access full dashboard analytics
+
+manage polls and nominees
+
+view live results
+
+inspect payment activity
+
+view webhook events
+
+manage admin users
+
+access audit records
+
+Admin capabilities
+
+A regular Admin is restricted to selected operational areas depending on the current role design.
+
+Login
+
+Admin login supports username or email with password. JWT tokens are issued and stored using the admin cookie pattern adopted in the frontend.
+
+Dashboard and Analytics
+
+The admin dashboard provides summary information useful for operations and monitoring.
+
+Examples of supported analytics:
+
+total revenue
+
+payment health
+
+poll performance
+
+top nominees
+
+recent payment days
+
+revenue over time
+
+poll breakdown
+
+The dashboard logic is Oracle-safe and was stabilized to work correctly with TypeORM and Oracle bind behavior.
+
+Audit Logging
+
+Audit logging records important admin and system actions.
+
+Audit fields
+
+Typical audit information includes:
+
+action
+
+entity
+
+entity id
+
+performed by
+
+created at
+
+details payload
+
+Audit details may include:
+
+HTTP method
+
+route
+
+request body
+
+query params
+
+outcome
+
+error message
+
+This supports post-incident review and operational transparency.
+
+Database Design
+
+The Oracle schema contains the following main tables:
+
+ROLES
+
+Stores admin role definitions.
+
+ADMINS
+
+Stores admin credentials, role mapping, and active state.
+
+AUDIT_LOGS
+
+Stores durable audit events.
+
+ELECTIONS
+
+Stores poll definitions, status windows, and default pricing.
+
+CANDIDATES
+
+Stores nominees belonging to polls and optional nominee-specific pricing.
+
+CARTS
+
+Stores public shopping cart state.
+
+CART_ITEMS
+
+Stores selected poll/nominee vote lines within a cart.
+
+PAYMENTS
+
+Stores payment lifecycle records.
+
+ELECTION_RESULTS
+
+Stores aggregated vote counts.
+
+VOTES
+
+Stores finalized vote records.
+
+VOTE_LOGS
+
+Stores idempotent vote application history.
+
+RECEIPTS
+
+Stores immutable receipt snapshots and hashes.
+
+WEBHOOK_EVENTS
+
+Stores webhook processing audit data.
+
+Sequence Strategy
+
+Because the backend code evolved over time, the schema supports two sequence naming families:
+
+SEQ_* family
+
+Examples:
+
+SEQ_CART_ID
+
+SEQ_PAYMENT_ID
+
+SEQ_ELECTION_ID
+
+*_seq family
+
+Examples:
+
+carts_seq
+
+payments_seq
+
+elections_seq
+
+This is done for backend compatibility because different parts of the application may reference different naming styles.
+
+At deployment time, sequence resync is important. Sequences should be moved to MAX(id) + 1 after any explicit seed inserts to avoid duplicate primary key errors.
+
+Trigger Strategy
+
+The schema uses triggers for numeric primary key assignment on tables where the backend may insert without supplying an id.
+
+Important triggers include:
+
+ROLES_BI
+
+ADMINS_BI
+
+AUDIT_LOGS_BI
+
+ELECTIONS_BI
+
+CANDIDATES_BI
+
+CARTS_BI
+
+PAYMENTS_BI
+
+VOTES_BI
+
+TRG_RECEIPTS_IMMUTABLE
+
+The immutability trigger is especially important to the receipt subsystem.
+
+Pricing Model
+
+The platform uses a two-level pricing model.
+
+Poll-level price
+
+ELECTIONS.DEFAULT_VOTE_PRICE is the default vote price for nominees in that poll.
+
+Nominee-level price
+
+CANDIDATES.VOTE_PRICE overrides the poll default when present.
+
+Effective price resolution
+
+The intended effective price logic is:
+
+candidate vote price if present, otherwise poll default vote price
+
+This matches the original working behavior of the system.
+
+Constraints and Validation Rules
+
+The schema includes key checks to enforce data sanity.
+
+Examples:
+
+admin active state must be Y or N
+
+poll status must be DRAFT, ACTIVE, or ENDED
+
+cart status must be PENDING, PAID, or PARTIALLY_APPLIED
+
+vote quantity must be positive
+
+payment amount must be non-negative
+
+receipt status must support the backend lifecycle
+
+vote apply status must be APPLIED or SKIPPED
+
+These checks are there to catch invalid writes close to the data layer.
+
+Public API Areas
+
+The platform includes public-facing APIs such as:
+
+fetching active polls
+
+fetching nominees by poll
+
+creating cart
+
+fetching cart by UUID
+
+initiating payment
+
+reading receipt by reference
+
+downloading receipt PDF
+
+The exact route layout follows the current frontend/backend proxy structure, but these are the core use cases the public API serves.
+
+Admin API Areas
+
+Admin APIs cover:
+
+login and authentication
+
+whoami / auth state
+
+dashboard analytics
+
+poll management
+
+nominee management
+
+result exploration
+
+payment search
+
+audit logs
+
+webhook events
+
+admin user management
+
+Role checks apply depending on route sensitivity.
+
+Frontend Architecture Notes
+
+The frontend uses Next.js App Router with a proxy pattern for admin routes and public APIs.
+
+Important frontend rules already established include:
+
+backend base URL must come from env
+
+admin token is stored as HttpOnly cookie
+
+server-side auth checks route through controlled APIs
+
+public cart state must handle missing cart UUIDs safely
+
+local stale cart UUIDs must be cleared when cart does not exist
+
+The cart-not-found recovery logic is especially important after database resets.
+
+Environment Variables
+
+At minimum, the system relies on configuration values similar to:
+
+PAYSTACK_SECRET_KEY=
+APP_BASE_URL=
+FRONTEND_BASE_URL=
+JWT_SECRET=
+SUPER_ADMIN_TOKEN=
+NEXT_PUBLIC_API_BASE_URL=
+BACKEND_BASE_URL=
+
+These must be configured correctly in development and production.
+
+Security Considerations
+Payment integrity
+
+Only verified webhook calls may finalize payments and apply votes.
+
+Admin protection
+
+Admin APIs require JWT-based authorization and role checks.
+
+Receipt immutability
+
+Receipts cannot be silently changed after finalization.
+
+Replay protection
+
+Vote logs and request hashes help limit duplicate processing.
+
+Auditing
+
+Operational actions are recorded for traceability.
+
+Environment isolation
+
+Secrets must not be hardcoded into source code.
+
+Production Deployment Guidance
+
+A production deployment should include:
+
+Reverse proxy
+
+Use NGINX or equivalent in front of backend and frontend.
+
+HTTPS
+
+TLS is required, especially for admin routes and payment callbacks.
+
+Environment management
+
+All secrets must come from environment configuration, not source files.
+
+Database backups
+
+Oracle backups should be scheduled and tested.
+
+Logging and monitoring
+
+Application logs, webhook failures, and payment anomalies should be monitored.
+
+Access control
+
+Admin routes should be restricted and audited.
+
+No localhost assumptions
+
+All backend/frontend base URLs must come from environment variables.
+
+Operational Runbook Notes
+If cart creation fails
+
+Check:
+
+cart UUID handling in frontend
+
+cart sequence alignment
+
+backend lookup by cart UUID
+
+stale local storage values
+
+If nominee creation fails with duplicate key
+
+Check:
+
+candidates_seq
+
+SEQ_CANDIDATE_ID
+
+max candidate id vs sequence next value
+
+If receipt creation fails on status
+
+Check:
+
+CHK_RECEIPTS_STATUS
+
+backend inserting INITIATED
+
+schema allowing INITIATED, SUCCESS, PARTIALLY_APPLIED, FAILED
+
+If election creation fails due to missing sequence
+
+Check whether backend is calling:
+
+elections_seq
+
+or SEQ_ELECTION_ID
+
+and ensure both families exist if the codebase still references both.
+
+What Has Been Stabilized So Far
+
+The platform has already reached a strong level of functional stability in several areas:
+
+cart creation and retrieval
+
+Paystack initiation
+
+webhook-based vote application
+
+idempotency validation
+
+partial application handling
+
+receipt snapshot generation
+
+receipt PDF generation
+
+receipt hash verification
+
+admin auth and RBAC
+
+live results for super admin
+
+dashboard analytics
+
+export workflows
+
+payment event tracking
+
+audit logging
+
+Current Naming Note
+
+Business language has moved from:
+
+Election → Poll
+
+Candidate → Nominee
+
+However, much of the codebase and database still uses the historical table names:
+
+ELECTIONS
+
+CANDIDATES
+
+ELECTION_RESULTS
+
+This is important to remember when reasoning about the system. Business terminology and storage terminology are not yet fully renamed.
+
+Recommended Future Improvements
+Schema cleanup
+
+Eventually unify sequence naming into one standard and update backend references accordingly.
+
+Naming modernization
+
+Rename database objects and service language fully from election/candidate to poll/nominee if desired.
+
+Email receipts
+
+Send payment receipts automatically after successful processing.
+
+Public result rules
+
+Expose results publicly only after poll closure according to business rules.
+
+Rate limiting and abuse protection
+
+Add request throttling and anti-bot controls.
+
+Deployment hardening
+
+Formalize production NGINX, TLS, cookies, CORS, and monitoring configuration.
+
+Getting Started
+Fresh schema setup
+
+clear the schema
+
+run the final schema deployment script
+
+verify one super admin exists
+
+start backend
+
+start frontend
+
+create polls and nominees from admin
+
+test public voting flow
+
+test Paystack webhook flow
+
+verify receipt generation
+
+Basic verification queries
+
+Useful checks after deployment include:
+
+count roles
+
+count admins
+
+list active polls
+
+list nominees
+
+check cart creation
+
+verify payment rows
+
+verify vote logs
+
+verify receipts
+
+verify webhook events
+
+Super Admin Seed
+
+The schema seeds:
+
+role SUPER_ADMIN
+
+role ADMIN
+
+one super admin record only
+
+This keeps the base deployment minimal and safe while still making the system usable immediately after setup.
+
+Final Summary
+
+This project is a payment-driven polling platform with enterprise-style backend discipline. Its strongest qualities are not just that users can vote, but that the system:
+
+applies votes only after verified payment
+
+prevents duplicate application
+
+supports partial application
+
+preserves immutable receipts
+
+records webhook and admin audit trails
+
+protects critical admin actions with RBAC
+
+keeps Oracle as a reliable transactional source of truth
+
+It is already much more than a basic poll app. It is a transactional voting engine with financial, audit, and verification capabilities built in from the start.
+
+If you want, I can turn this into a polished README.md format with code fences, setup commands, env examples, folder structure, and troubleshooting sections ready to paste into your repo.
+
+PLEASE DO THAT
+
+Here is your enterprise-grade, production-ready README.md — fully structured, clean, and ready to drop into your repo.
+
+🗳️ Poll Voting Platform
+📌 Overview
+
+This is a payment-driven public polling platform that allows users to purchase votes for nominees across multiple polls in a secure, auditable, and scalable way.
+
+The system is built with:
+
+Backend: NestJS
+
+Frontend: Next.js (App Router)
+
+Database: Oracle
+
+Payments: Paystack
+
+🚀 Core Capabilities
+
+✅ Multi-poll voting in a single payment (cart system)
+
+✅ Paystack-integrated payment processing
+
+✅ Webhook-based vote finalization (secure)
+
+✅ Idempotent vote application (no duplicates)
+
+✅ Partial vote application (graceful handling)
+
+✅ Immutable receipt system with PDF + hash verification
+
+✅ Admin dashboard with RBAC (SUPER_ADMIN / ADMIN)
+
+✅ Full audit + webhook event tracking
+
+🧠 System Design Principles
+1. Webhook is the Source of Truth
+
+Votes are ONLY applied after Paystack webhook verification.
+
+2. Idempotency First
+
+Duplicate webhook calls will NOT duplicate votes.
+
+3. Immutable Receipts
+
+Once finalized, receipts cannot be modified.
+
+4. Anonymous Voting
+
+No user accounts required — voting is payment-based only.
+
+🏗️ Architecture
+Frontend (Next.js)
+        ↓
+Backend (NestJS API)
+        ↓
+Oracle Database
+        ↓
+Paystack (Payment Gateway)
+        ↑
+Webhook (Vote Finalization)
+🔄 Full Data Flow
+
+User selects poll & nominee
+
+Cart is created
+
+Payment initiated via Paystack
+
+User completes payment
+
+Paystack sends webhook
+
+Backend verifies payment
+
+Votes applied (idempotent)
+
+Receipt generated
+
+Results updated
+
+🗃️ Database Structure
+Core Tables
+Table	Purpose
+ROLES	Admin roles
+ADMINS	Admin users
+ELECTIONS	Polls
+CANDIDATES	Nominees
+CARTS	Shopping cart
+CART_ITEMS	Cart entries
+PAYMENTS	Payment records
+VOTES	Final votes
+VOTE_LOGS	Idempotency control
+ELECTION_RESULTS	Aggregated results
+RECEIPTS	Immutable receipts
+WEBHOOK_EVENTS	Webhook tracking
+AUDIT_LOGS	System audit
+💰 Pricing Model
+Final Price = CANDIDATES.VOTE_PRICE 
+              OR ELECTIONS.DEFAULT_VOTE_PRICE
+
+Candidate price overrides poll default
+
+Default vote price (e.g., 100) used if candidate price is NULL
+
+🛒 Cart System
+Features
+
+Multi-poll support
+
+Persistent cart (UUID-based)
+
+Total amount calculation
+
+Status lifecycle:
+
+PENDING
+
+PAID
+
+PARTIALLY_APPLIED
+
+💳 Payment System
+Payment Lifecycle
+INITIATED → SUCCESS → (PARTIALLY_APPLIED optional)
+Key Rules
+
+Amount must match cart total
+
+Payment reference is unique
+
+Webhook drives final state
+
+🔔 Webhook System (CRITICAL)
+Responsibilities
+
+Validate signature
+
+Verify transaction
+
+Apply votes
+
+Prevent duplicates
+
+Generate receipts
+
+Log event
+
+Why it matters
+
+The webhook is the only trusted source of payment confirmation
+
+🧾 Receipt System
+Features
+
+Snapshot-based (not live recalculated)
+
+Hash verification
+
+Immutable after finalization
+
+PDF generation
+
+QR code support
+
+Receipt Status
+INITIATED
+SUCCESS
+PARTIALLY_APPLIED
+FAILED
+🔐 Security Model
+
+JWT-based admin authentication
+
+HttpOnly cookies
+
+Webhook signature validation
+
+Idempotency via VOTE_LOGS
+
+Immutable receipts
+
+Audit logging
+
+👨‍💼 Admin System
+Roles
+Role	Access
+SUPER_ADMIN	Full system access
+ADMIN	Limited operations
+Capabilities
+
+Dashboard analytics
+
+Poll management
+
+Nominee management
+
+Payment tracking
+
+Webhook monitoring
+
+Audit logs
+
+User management
+
+📊 Dashboard Features
+
+Revenue summary
+
+Top nominees
+
+Poll performance
+
+Payment health
+
+7-day revenue trends
+
+🔁 Idempotency Design
+UNIQUE (REFERENCE, CART_ITEM_ID)
+
+Ensures:
+
+No duplicate vote application
+
+Safe webhook retries
+
+Replay attack protection
+
+📦 Environment Variables
+Backend
+PAYSTACK_SECRET_KEY=
+JWT_SECRET=
+APP_BASE_URL=
+FRONTEND_BASE_URL=
+SUPER_ADMIN_TOKEN=
+Frontend
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+BACKEND_BASE_URL=http://localhost:3000
+▶️ Getting Started
+1. Setup Database
+-- Run your final schema script
+2. Start Backend
+cd voting-backend
+npm install
+npm run start:dev
+3. Start Frontend
+cd voting_frontend
+npm install
+npm run dev
+4. Test Flow
+
+Create poll (admin)
+
+Add nominees
+
+Create cart (public)
+
+Pay via Paystack
+
+Verify webhook
+
+Check:
+
+PAYMENTS
+
+VOTE_LOGS
+
+RECEIPTS
+
+RESULTS
+
+🛠️ Troubleshooting
+❌ Cart not found
+
+Clear localStorage cart UUID
+
+Ensure CARTS table has data
+
+❌ ORA-00001 duplicate key
+
+Resync sequences:
+
+SELECT MAX(CANDIDATE_ID) FROM CANDIDATES;
+❌ Receipt status error
+
+Fix constraint:
+
+ALTER TABLE RECEIPTS DROP CONSTRAINT CHK_RECEIPTS_STATUS;
+
+ALTER TABLE RECEIPTS ADD CONSTRAINT CHK_RECEIPTS_STATUS
+CHECK (STATUS IN ('INITIATED','SUCCESS','PARTIALLY_APPLIED','FAILED'));
+❌ Payment not applied
+
+Check webhook logs
+
+Validate signature
+
+Confirm reference match
+
+📈 Production Deployment
+Required Setup
+
+NGINX reverse proxy
+
+HTTPS (SSL)
+
+Domain setup
+
+Environment variables secured
+
+Database backups
+
+Logging enabled
+
+🔍 Monitoring
+
+Track:
+
+Webhook failures
+
+Payment mismatches
+
+Receipt generation errors
+
+Admin actions
+
+Audit logs
+
+🔮 Future Enhancements
+
+Email receipts
+
+Fraud detection
+
+Public result rules
+
+Analytics dashboard improvements
+
+Rate limiting / anti-bot
+
+⚠️ Naming Note
+
+Database still uses:
+
+Old	New
+ELECTIONS	Polls
+CANDIDATES	Nominees
+🧪 Verified Stable Features
+
+Cart system
+
+Payment flow
+
+Webhook processing
+
+Idempotency
+
+Partial apply
+
+Receipt system
+
+Admin RBAC
+
+Dashboard analytics
+
+Export features
+
+👑 Default Super Admin
+Email: superadmin@yourapp.com
+Username: Superadmin
+🧾 License
+
+Internal / Proprietary
+
+✅ Final Summary
+
+This is not just a voting app.
+
+It is a transactional, payment-secured polling system with:
+
+Financial integrity
+
+Strong audit trails
+
+Idempotent processing
+
+Immutable receipts
+
+Enterprise-ready architecture
