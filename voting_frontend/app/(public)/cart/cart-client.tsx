@@ -29,29 +29,72 @@ function isPaidLikeStatus(status?: string) {
   return s === 'PAID' || s === 'SUCCESS' || s === 'PARTIALLY_APPLIED';
 }
 
-export default function CartClient({ cart: initial }: { cart: CartResponse }) {
+export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
-  const [cart, setCart] = useState<CartResponse | null>(() => ({
-    ...initial,
-    items: initial?.items ?? [],
-  }));
+  // ✅ ALL HOOKS FIRST
 
+  const [cart, setCart] = useState<CartResponse | null>(() => {
+    if (!initial) return null;
+    return { ...initial, items: initial.items ?? [] };
+  });
+
+  const [loadingInit, setLoadingInit] = useState(!initial);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
 
-  const [mounted, setMounted] = useState(false);
+  // ✅ LOAD CART IF NEEDED
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (initial) return;
+
+    const cartUuid =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('cartUuid')
+        : null;
+
+    if (!cartUuid) {
+      setLoadingInit(false);
+      return;
+    }
+
+    fetch(`/api/public/cart/${cartUuid}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        setCart({
+          ...data,
+          items: data?.items ?? [],
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoadingInit(false));
+  }, [initial]);
+
+  // ✅ SAFE HOOKS
 
   const status = (cart?.status || '').toUpperCase();
+
   const paidLike = useMemo(() => isPaidLikeStatus(status), [status]);
+  const isPayable = useMemo(() => status === 'PENDING', [status]);
+
   const hasItems = (cart?.items?.length ?? 0) > 0;
 
-  // 🔥 IMPORTANT FIX: HANDLE RETURN FROM RECEIPT
+  // ✅ FIX: MOVE grouped UP (CRITICAL)
+  const grouped = useMemo(() => {
+    const map = new Map<number, CartItem[]>();
+
+    for (const item of cart?.items ?? []) {
+      if (!map.has(item.electionId)) {
+        map.set(item.electionId, []);
+      }
+      map.get(item.electionId)!.push(item);
+    }
+
+    return Array.from(map.entries());
+  }, [cart?.items]);
+
+  // ✅ HANDLE PAYMENT REDIRECT
   useEffect(() => {
     if (!cart) return;
 
@@ -59,43 +102,40 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
       localStorage.removeItem('cartUuid');
       localStorage.setItem('cartCount', '0');
       window.dispatchEvent(new Event('cartUpdated'));
-
       window.location.assign('/vote');
     }
-  }, [cart]);
+  }, [cart?.status]);
 
-  const grouped = useMemo(() => {
-    const map = new Map<number, CartItem[]>();
-    for (const item of cart?.items ?? []) {
-      if (!map.has(item.electionId)) {
-        map.set(item.electionId, []);
-      }
-      map.get(item.electionId)!.push(item);
-    }
-    return Array.from(map.entries());
-  }, [cart?.items]);
+  // ✅ NOW SAFE TO GUARD
 
+  if (!cart && loadingInit) {
+    return <div className="p-6">Loading cart...</div>;
+  }
+
+  if (!cart) {
+    return <div className="p-6">No cart found.</div>;
+  }
+
+  const c = cart;
+
+  // 👉 continue rest of your file unchanged
   function syncCart(data: CartResponse) {
     const items = data.items ?? [];
 
-    setCart({
-      ...data,
-      items,
-    });
+    setCart({ ...data, items });
 
-    const itemCount = items.length;
-    localStorage.setItem('cartCount', String(itemCount));
+    localStorage.setItem('cartCount', String(items.length));
     window.dispatchEvent(new Event('cartUpdated'));
   }
 
   async function updateQty(item: CartItem, nextQty: number) {
-    if (!cart || nextQty < 1) return;
+    if (nextQty < 1) return;
 
     const key = `${item.electionId}:${item.candidateId}`;
     setBusyKey(key);
 
     try {
-      const res = await fetch(`/api/cart/${cart.cartUuid}/item`, {
+      const res = await fetch(`/api/cart/${c.cartUuid}/item`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -105,23 +145,28 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
         }),
       });
 
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || 'Update failed');
+      }
+
       const data = await res.json();
       syncCart(data);
 
+    } catch (e: any) {
+      setErr(e.message || 'Something went wrong');
     } finally {
       setBusyKey(null);
     }
   }
 
   async function removeItem(item: CartItem) {
-    if (!cart) return;
-
     const key = `${item.electionId}:${item.candidateId}`;
     setBusyKey(key);
     setErr(null);
 
     try {
-      const res = await fetch(`/api/cart/${cart.cartUuid}/item`, {
+      const res = await fetch(`/api/cart/${c.cartUuid}/item`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,18 +180,12 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
         throw new Error(data?.message || 'Failed to remove item');
       }
 
-      const fresh = await fetch(`/api/public/cart/${cart.cartUuid}`, {
+      const fresh = await fetch(`/api/public/cart/${c.cartUuid}`, {
         cache: 'no-store',
       });
 
       const freshData = await fresh.json();
       syncCart(freshData);
-
-      if (!freshData.items || freshData.items.length === 0) {
-        localStorage.removeItem('cartUuid');
-        localStorage.setItem('cartCount', '0');
-        window.dispatchEvent(new Event('cartUpdated'));
-      }
 
     } catch (e: any) {
       setErr(e.message || 'Something went wrong');
@@ -156,31 +195,26 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
   }
 
   async function clearCart() {
-    if (!cart || !hasItems) return;
+    if (!hasItems) return;
 
     if (!confirm('Are you sure you want to clear all votes?')) return;
 
     setClearing(true);
 
     try {
-      await fetch(`/api/cart/${cart.cartUuid}/clear`, {
-        method: 'DELETE',
-      });
+      await fetch(`/api/cart/${c.cartUuid}/clear`, { method: 'DELETE' });
 
       localStorage.removeItem('cartUuid');
       localStorage.setItem('cartCount', '0');
       window.dispatchEvent(new Event('cartUpdated'));
 
       window.location.assign('/vote');
-
     } finally {
       setClearing(false);
     }
   }
 
   async function pay() {
-    if (!cart) return;
-
     setErr(null);
 
     if (!email.trim()) {
@@ -192,20 +226,24 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
       const res = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cartUuid: cart.cartUuid, email }),
+        body: JSON.stringify({ cartUuid: c.cartUuid, email }),
       });
 
       const data = await res.json();
-      window.location.assign(data.authorization_url);
+
+      if (!res.ok) {
+        throw new Error(data?.message || 'Payment failed');
+      }
+
+      window.location.assign(
+        data.authorization_url || data?.data?.authorization_url
+      );
+
     } catch (e: any) {
       setErr(e.message);
     } finally {
       setLoading(false);
     }
-  }
-
-  if (!cart) {
-    return <div className="text-center py-10">Loading cart...</div>;
   }
 
   return (
@@ -287,7 +325,7 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
 
       <div className="rounded-2xl border bg-white p-4 shadow-sm flex justify-between">
         <span>Total</span>
-        <span className="text-lg font-semibold">{money(cart.totalAmount)}</span>
+        <span className="text-lg font-semibold">{money(c.totalAmount)}</span>
       </div>
 
       <button
@@ -308,8 +346,8 @@ export default function CartClient({ cart: initial }: { cart: CartResponse }) {
 
         <button
           onClick={pay}
-          disabled={mounted ? !hasItems : true}
-          className="w-full rounded-xl bg-black text-white py-3"
+          disabled={!hasItems || loading || paidLike || clearing}
+          className="w-full rounded-xl bg-black text-white py-3 disabled:opacity-50"
         >
           {loading ? 'Loading...' : 'Pay with Paystack'}
         </button>
