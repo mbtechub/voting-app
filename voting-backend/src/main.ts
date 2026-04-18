@@ -1,29 +1,31 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
-import * as express from 'express'; // ✅ ADD THIS
+import * as express from 'express';
 
-function requireEnv(name: string): string {
-  const value = (process.env[name] || '').trim();
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
+// ✅ STATIC IMPORTS (FIXES TS ERROR)
+import { AppModule } from './app.module';
+import { AppModuleProd } from './app.module.prod';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // =====================================================
+  // ✅ ENV SWITCH (LOCAL vs PROD)
+  // =====================================================
+  const isProd = process.env.NODE_ENV === 'production';
+
+  const ModuleClass = isProd ? AppModuleProd : AppModule;
+
+  const app = await NestFactory.create(ModuleClass);
 
   // =====================================================
-  // 🔥 SERVE UPLOADS (CRITICAL FIX FOR IMAGES)
+  // 🔥 SERVE UPLOADS
   // =====================================================
   app.use('/uploads', express.static('uploads'));
 
   // =====================================================
-  // FLEXIBLE CORS (DEV + NETWORK TESTING)
+  // 🌐 CORS
   // =====================================================
   app.enableCors({
     origin: true,
@@ -37,21 +39,12 @@ async function bootstrap() {
   });
 
   // =====================================================
-  // DEBUG: Confirm DB schema
-  // =====================================================
-  const ds = app.get(DataSource);
-  const whoAmI = await ds.query(
-    `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
-  );
-  console.log('DB_SCHEMA_CHECK:', whoAmI);
-
-  // =====================================================
-  // Global prefix
+  // PREFIX
   // =====================================================
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // RAW BODY FOR PAYSTACK WEBHOOK (MUST STAY FIRST)
+  // 🔐 PAYSTACK RAW BODY (MUST COME BEFORE JSON PARSER)
   // =====================================================
   app.use(
     '/api/payments/webhook',
@@ -64,19 +57,15 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // NORMAL JSON REQUESTS (DO NOT TOUCH MULTIPART)
+  // NORMAL JSON (SAFE)
   // =====================================================
-  const jsonParser = bodyParser.json({
-    limit: '2mb',
-  });
+  const jsonParser = bodyParser.json({ limit: '2mb' });
 
   app.use((req: any, res: any, next: any) => {
     const url = (req.originalUrl || req.url || '').toString();
 
-    // skip webhook (uses raw body)
     if (url.startsWith('/api/payments/webhook')) return next();
 
-    // skip multipart (IMPORTANT)
     const contentType = req.headers['content-type'] || '';
     if (contentType.includes('multipart/form-data')) {
       return next();
@@ -86,7 +75,7 @@ async function bootstrap() {
   });
 
   // =====================================================
-  // URL ENCODED (FOR FORMS)
+  // FORM DATA
   // =====================================================
   app.use(
     bodyParser.urlencoded({
@@ -96,7 +85,7 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // GLOBAL VALIDATION (FORMDATA SAFE)
+  // VALIDATION
   // =====================================================
   app.useGlobalPipes(
     new ValidationPipe({
@@ -110,13 +99,28 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // PORT
+  // 🚀 START SERVER
   // =====================================================
   const port = Number(process.env.PORT || 3000);
-
   await app.listen(port, '0.0.0.0');
 
-  console.log(`Nest API listening on http://0.0.0.0:${port}`);
+  console.log(`🚀 Nest API running on http://0.0.0.0:${port}`);
+  console.log(`🌍 Mode: ${isProd ? 'PRODUCTION (Oracle Wallet)' : 'LOCAL DB'}`);
+
+  // =====================================================
+  // 🧠 SAFE DB DEBUG
+  // =====================================================
+  try {
+    const ds = app.get(DataSource);
+
+    const whoAmI = await ds.query(
+      `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
+    );
+
+    console.log('✅ DB CONNECTED:', whoAmI);
+  } catch {
+    console.warn('⚠️ DB DEBUG FAILED (but server is running)');
+  }
 }
 
 bootstrap();
