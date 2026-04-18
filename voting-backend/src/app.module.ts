@@ -14,8 +14,6 @@ import { AdminModule } from './modules/admin/admin.module';
 import { PublicModule } from './modules/public/public.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { PaystackModule } from './paystack/paystack.module';
-
-// ✅ New: Election Management (admin elections + candidates)
 import { ElectionManagementModule } from './modules/election-management/election-management.module';
 
 function requireEnv(config: ConfigService, key: string): string {
@@ -37,19 +35,36 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // ✅ No hardcoded DB creds/URL: use env vars (matches your project rule)
+    // ✅ SUPPORT BOTH LOCAL + AUTONOMOUS DB
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'oracle',
-        connectString: requireEnv(config, 'DB_CONNECT_STRING'),
-        username: requireEnv(config, 'DB_USER'),
-        password: requireEnv(config, 'DB_PASS'),
-        synchronize: false,
-        autoLoadEntities: true,
-        logging: true,
-      }),
+      useFactory: (config: ConfigService) => {
+        const useWallet = (config.get<string>('DB_WALLET') || 'false') === 'true';
+
+        const baseConfig = {
+          type: 'oracle' as const,
+          username: requireEnv(config, 'DB_USER'),
+          password: requireEnv(config, 'DB_PASSWORD'),
+          connectString: requireEnv(config, 'DB_CONNECT_STRING'),
+          synchronize: false,
+          autoLoadEntities: true,
+          logging: true,
+        };
+
+        // ✅ SERVER MODE (Autonomous DB with wallet)
+        if (useWallet) {
+          return {
+            ...baseConfig,
+            extra: {
+              configDir: requireEnv(config, 'TNS_ADMIN'),
+            },
+          };
+        }
+
+        // ✅ LOCAL MODE (normal Oracle / XE)
+        return baseConfig;
+      },
     }),
 
     AuthModule,
@@ -60,8 +75,6 @@ function requireEnv(config: ConfigService, key: string): string {
     PublicModule,
     ReceiptsModule,
     PaystackModule,
-
-    // ✅ Added
     ElectionManagementModule,
   ],
 
