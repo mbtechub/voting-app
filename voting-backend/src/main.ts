@@ -4,8 +4,9 @@ import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
+import * as oracledb from 'oracledb'; // ✅ ADD
 
-// ✅ STATIC IMPORTS (FIXES TS ERROR)
+// ✅ STATIC IMPORTS
 import { AppModule } from './app.module';
 import { AppModuleProd } from './app.module.prod';
 
@@ -14,6 +15,18 @@ async function bootstrap() {
   // ✅ ENV SWITCH (LOCAL vs PROD)
   // =====================================================
   const isProd = process.env.NODE_ENV === 'production';
+
+  // 🔥 ORACLE WALLET (ONLY IN PRODUCTION)
+  if (isProd) {
+    try {
+      oracledb.initOracleClient({
+        configDir: process.env.TNS_ADMIN,
+      });
+      console.log('✅ Oracle client initialized with wallet');
+    } catch (err) {
+      console.error('❌ Oracle client init failed:', err);
+    }
+  }
 
   const ModuleClass = isProd ? AppModuleProd : AppModule;
 
@@ -44,7 +57,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔐 PAYSTACK RAW BODY (MUST COME BEFORE JSON PARSER)
+  // 🔐 PAYSTACK RAW BODY
   // =====================================================
   app.use(
     '/api/payments/webhook',
@@ -57,7 +70,7 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // NORMAL JSON (SAFE)
+  // NORMAL JSON
   // =====================================================
   const jsonParser = bodyParser.json({ limit: '2mb' });
 
@@ -117,9 +130,9 @@ async function bootstrap() {
       `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
     );
 
-    console.log('✅ DB CONNECTED:', whoAmI);
-  } catch {
-    console.warn('⚠️ DB DEBUG FAILED (but server is running)');
+      console.log('✅ DB CONNECTED:', whoAmI);
+  } catch (err: any) {
+    console.warn('⚠️ DB DEBUG FAILED:', err?.message || err);
   }
 }
 
