@@ -1,10 +1,14 @@
 import 'reflect-metadata';
+
+// 🔥 FORCE WALLET PATH EARLY (CRITICAL)
+process.env.TNS_ADMIN = process.env.TNS_ADMIN || '/home/vapp/wallet';
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
-import * as oracledb from 'oracledb'; // ✅ ADD
+import * as oracledb from 'oracledb';
 
 // ✅ STATIC IMPORTS
 import { AppModule } from './app.module';
@@ -16,12 +20,14 @@ async function bootstrap() {
   // =====================================================
   const isProd = process.env.NODE_ENV === 'production';
 
-  // 🔥 ORACLE WALLET (ONLY IN PRODUCTION)
+  // 🔥 ORACLE WALLET (ONLY IN PRODUCTION — HARD FORCED)
   if (isProd) {
     try {
       oracledb.initOracleClient({
-        configDir: process.env.TNS_ADMIN,
+        configDir: '/home/vapp/wallet', // 🔥 HARD PATH (DO NOT RELY ON ENV)
       });
+
+      console.log('🔥 Oracle wallet forced at runtime:', process.env.TNS_ADMIN);
       console.log('✅ Oracle client initialized with wallet');
     } catch (err) {
       console.error('❌ Oracle client init failed:', err);
@@ -130,7 +136,7 @@ async function bootstrap() {
       `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
     );
 
-      console.log('✅ DB CONNECTED:', whoAmI);
+    console.log('✅ DB CONNECTED:', whoAmI);
   } catch (err: any) {
     console.warn('⚠️ DB DEBUG FAILED:', err?.message || err);
   }
