@@ -25,6 +25,10 @@ function requireEnv(config: ConfigService, key: string): string {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath:
+        process.env.NODE_ENV === 'production'
+          ? '.env'
+          : '.env.local',
     }),
 
     ThrottlerModule.forRoot([
@@ -34,28 +38,57 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // ✅ ORACLE AUTONOMOUS DB (WALLET CONFIG)
+    // 🔥 SMART + SAFE DB CONFIG
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'oracle',
+      useFactory: (config: ConfigService) => {
+        const nodeEnv = process.env.NODE_ENV;
+        const tnsAdmin = config.get<string>('TNS_ADMIN');
 
-        username: requireEnv(config, 'DB_USER'),
-        password: requireEnv(config, 'DB_PASSWORD'),
-        connectString: requireEnv(config, 'DB_CONNECT_STRING'),
+        // ✅ Only enable wallet if BOTH conditions are true
+        const useWallet = nodeEnv === 'production' && !!tnsAdmin;
 
-        // 🔥 CRITICAL FOR WALLET
-        extra: {
-          configDir: requireEnv(config, 'TNS_ADMIN'),
-        },
+        // ============================
+        // 🔵 PRODUCTION (WALLET MODE)
+        // ============================
+        if (useWallet) {
+          return {
+            type: 'oracle',
 
-        // optional but recommended
-        poolSize: 10,
+            username: requireEnv(config, 'DB_USER'),
+            password: requireEnv(config, 'DB_PASSWORD'),
+            connectString: requireEnv(config, 'DB_CONNECT_STRING'),
 
-        synchronize: false,
-        autoLoadEntities: true,
-        logging: true,
-      }),
+            extra: {
+              configDir: tnsAdmin,
+
+              poolMin: 1,
+              poolMax: 5,
+              poolIncrement: 1,
+              queueTimeout: 60000,
+            },
+
+            synchronize: false,
+            autoLoadEntities: true,
+            logging: false,
+          };
+        }
+
+        // ============================
+        // 🟢 LOCAL DEV (NO WALLET)
+        // ============================
+        return {
+          type: 'oracle',
+
+          username: requireEnv(config, 'DB_USER'),
+          password: requireEnv(config, 'DB_PASSWORD'),
+          connectString: requireEnv(config, 'DB_CONNECT_STRING'),
+
+          synchronize: false,
+          autoLoadEntities: true,
+          logging: true,
+        };
+      },
     }),
 
     AuthModule,
@@ -76,4 +109,4 @@ function requireEnv(config: ConfigService, key: string): string {
     },
   ],
 })
-export class AppModuleProd {}
+export class AppModule {}

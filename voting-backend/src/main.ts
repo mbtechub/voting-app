@@ -1,8 +1,5 @@
 import 'reflect-metadata';
 
-// 🔥 FORCE WALLET PATH EARLY (CRITICAL)
-process.env.TNS_ADMIN = process.env.TNS_ADMIN || '/home/vapp/wallet';
-
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
@@ -10,36 +7,34 @@ import { DataSource } from 'typeorm';
 import * as express from 'express';
 import * as oracledb from 'oracledb';
 
-// ✅ STATIC IMPORTS
+// ✅ SINGLE MODULE ONLY
 import { AppModule } from './app.module';
-import { AppModuleProd } from './app.module.prod';
 
 async function bootstrap() {
-  // =====================================================
-  // ✅ ENV SWITCH (LOCAL vs PROD)
-  // =====================================================
   const isProd = process.env.NODE_ENV === 'production';
 
-  // 🔥 ORACLE WALLET (ONLY IN PRODUCTION — HARD FORCED)
+  // =====================================================
+  // 🔥 ORACLE CLIENT INIT (ONLY FOR PRODUCTION WALLET)
+  // =====================================================
   if (isProd) {
     try {
       oracledb.initOracleClient({
-        configDir: '/home/vapp/wallet', // 🔥 HARD PATH (DO NOT RELY ON ENV)
+        libDir: '/home/vapp/instantclient',
+        configDir: '/home/vapp/wallet',
       });
 
-      console.log('🔥 Oracle wallet forced at runtime:', process.env.TNS_ADMIN);
-      console.log('✅ Oracle client initialized with wallet');
-    } catch (err) {
-      console.error('❌ Oracle client init failed:', err);
+      console.log('🔥 Oracle initialized (wallet + client)');
+    } catch (err: any) {
+      console.error('❌ Oracle init failed:', err.message);
+      process.exit(1);
     }
   }
 
-  const ModuleClass = isProd ? AppModuleProd : AppModule;
-
-  const app = await NestFactory.create(ModuleClass);
+  // ✅ ALWAYS USE SAME MODULE
+  const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔥 SERVE UPLOADS
+  // 📁 SERVE UPLOADS
   // =====================================================
   app.use('/uploads', express.static('uploads'));
 
@@ -76,7 +71,7 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // NORMAL JSON
+  // JSON HANDLER (SAFE)
   // =====================================================
   const jsonParser = bodyParser.json({ limit: '2mb' });
 
@@ -86,9 +81,7 @@ async function bootstrap() {
     if (url.startsWith('/api/payments/webhook')) return next();
 
     const contentType = req.headers['content-type'] || '';
-    if (contentType.includes('multipart/form-data')) {
-      return next();
-    }
+    if (contentType.includes('multipart/form-data')) return next();
 
     return jsonParser(req, res, next);
   });
@@ -109,7 +102,6 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: false,
       transform: true,
       transformOptions: {
         enableImplicitConversion: true,
@@ -127,18 +119,18 @@ async function bootstrap() {
   console.log(`🌍 Mode: ${isProd ? 'PRODUCTION (Oracle Wallet)' : 'LOCAL DB'}`);
 
   // =====================================================
-  // 🧠 SAFE DB DEBUG
+  // 🧠 DB DEBUG
   // =====================================================
   try {
     const ds = app.get(DataSource);
 
-    const whoAmI = await ds.query(
+    const result = await ds.query(
       `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
     );
 
-    console.log('✅ DB CONNECTED:', whoAmI);
+    console.log('✅ DB CONNECTED:', result);
   } catch (err: any) {
-    console.warn('⚠️ DB DEBUG FAILED:', err?.message || err);
+    console.error('❌ DB CONNECTION FAILED:', err.message);
   }
 }
 
