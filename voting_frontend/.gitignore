@@ -1,41 +1,78 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =========================
+# ROOT (MONOREPO SAFE)
+# =========================
 
 # dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+node_modules/
+**/node_modules/
 
-# testing
-/coverage
+# builds
+.next/
+**/.next/
+dist/
+**/dist/
+build/
+**/build/
+out/
+**/out/
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
+# logs
+*.log
+logs/
+*.log.*
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (NEVER commit these)
+.env
+.env.*
+!.env.example
 
-# vercel
-.vercel
+# OS / system
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# vercel
+.vercel
+
+# testing
+coverage/
+
+# misc sensitive / junk files
+*.pem
+*.key
+*.crt
+
+# your project-specific junk (IMPORTANT based on your repo)
+cookies*.txt
+curl
+Date
+documentation.me
+login_body.json
+login_headers.txt
+TABLECREATE
+vgpusvp.log
+
+# Next.js specific
+.next/cache/
+
+# NestJS build output
+dist/
+
+# optional: uploads/temp files
+uploads/
+tmp/
+temp/
