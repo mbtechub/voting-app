@@ -26,8 +26,6 @@ function requireEnv(config: ConfigService, key: string): string {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-
-      // 🔥 LOAD LOCAL FIRST, THEN FALLBACK TO PROD
       envFilePath: ['.env.local', '.env'],
     }),
 
@@ -38,14 +36,13 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // 🔥 SMART DB CONFIG (AUTO SWITCH)
+    // 🔥 SMART DB CONFIG (LOCAL + CLOUD SAFE)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const connectString = requireEnv(config, 'DB_CONNECT_STRING');
 
-        // 🔥 Detect Autonomous DB (cloud) vs local
         const isCloud =
           connectString.includes('adb.') ||
           connectString.includes('_high') ||
@@ -53,19 +50,21 @@ function requireEnv(config: ConfigService, key: string): string {
           connectString.includes('_low');
 
         // ============================
-        // 🔵 AUTONOMOUS DB (SSL REQUIRED)
+        // 🔵 AUTONOMOUS DB (TCPS - RENDER SAFE)
         // ============================
         if (isCloud) {
           return {
             type: 'oracle',
 
-            connectString,
             username: requireEnv(config, 'DB_USER'),
             password: requireEnv(config, 'DB_PASSWORD'),
 
             extra: {
-              ssl: true,
-              sslServerDnMatch: false,
+              connectString: `(DESCRIPTION=
+                (ADDRESS=(PROTOCOL=tcps)(HOST=${requireEnv(config, 'DB_HOST')})(PORT=1522))
+                (CONNECT_DATA=(SERVICE_NAME=${requireEnv(config, 'DB_SERVICE_NAME')}))
+                (SECURITY=(SSL_SERVER_DN_MATCH=yes))
+              )`,
             },
 
             synchronize: false,
@@ -75,7 +74,7 @@ function requireEnv(config: ConfigService, key: string): string {
         }
 
         // ============================
-        // 🟢 LOCAL ORACLE XE (NO SSL)
+        // 🟢 LOCAL ORACLE XE (UNCHANGED)
         // ============================
         return {
           type: 'oracle',
