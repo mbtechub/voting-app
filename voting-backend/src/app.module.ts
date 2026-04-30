@@ -75,7 +75,7 @@ function requireEnv(config: ConfigService, key: string): string {
         }
 
         // ============================
-        // 🟢 LOCAL ORACLE XE
+        // 🟢 LOCAL ORACLE XE ...
         // ============================
         return {
           type: 'oracle',
