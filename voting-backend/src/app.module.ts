@@ -62,7 +62,7 @@ function requireEnv(config: ConfigService, key: string): string {
 
             extra: {
               ssl: true,
-              sslServerDnMatch: false,
+              sslServerDnMatch: true,
               connectTimeout: 30000,
             },
 
