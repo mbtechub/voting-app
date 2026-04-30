@@ -20,9 +20,6 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
-
-    // 🔥 ADD THIS (fixes Express namespace error)
-    "types": ["node", "express"]
+    "noFallthroughCasesInSwitch": false
   }
 }
