@@ -5,42 +5,36 @@ import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
-import * as oracledb from 'oracledb';
 
-// ✅ SINGLE MODULE ONLY
+// ❌ REMOVE THIS (NOT NEEDED)
+// import * as oracledb from 'oracledb';
+
 import { AppModule } from './app.module';
+
 console.log('🚀 BOOTING APP...');
 console.log('ENV CHECK:', {
   DB_CONNECT_STRING: process.env.DB_CONNECT_STRING,
   DB_USER: process.env.DB_USER,
   DB_HOST: process.env.DB_HOST,
   JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+  WALLET_PATH: process.env.ORACLE_WALLET_PATH,
 });
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
   // =====================================================
-  // 🔥 ORACLE CLIENT INIT (SAFE FOR PRODUCTION)
+  // 🔥 WALLET CONFIG (THIN MODE CORRECT WAY)
   // =====================================================
-  if (isProd && process.env.ORACLE_CLIENT_PATH) {
-    try {
-      oracledb.initOracleClient({
-        libDir: process.env.ORACLE_CLIENT_PATH,
-        configDir: process.env.ORACLE_WALLET_PATH,
-      });
-
-      console.log('🔥 Oracle initialized');
-    } catch (err: any) {
-      console.error('❌ Oracle init failed:', err.message);
-      // ❗ Do NOT crash app
-    }
+  if (isProd && process.env.ORACLE_WALLET_PATH) {
+    process.env.TNS_ADMIN = process.env.ORACLE_WALLET_PATH;
+    console.log('🔥 Wallet configured via TNS_ADMIN');
   }
 
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY (SAFE)
+  // 🔐 TRUST PROXY
   // =====================================================
   const instance = app.getHttpAdapter().getInstance();
   if (instance && instance.set) {
@@ -48,12 +42,12 @@ async function bootstrap() {
   }
 
   // =====================================================
-  // 📁 SERVE UPLOADS
+  // 📁 STATIC FILES
   // =====================================================
   app.use('/uploads', express.static('uploads'));
 
   // =====================================================
-  // 🌐 CORS (PRODUCTION SAFE)
+  // 🌐 CORS
   // =====================================================
   const allowedOrigins = [
     'http://localhost:3001',
@@ -63,12 +57,6 @@ async function bootstrap() {
   app.enableCors({
     origin: allowedOrigins.length ? allowedOrigins : true,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'x-paystack-signature',
-    ],
   });
 
   // =====================================================
@@ -122,9 +110,6 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
     }),
   );
 
