@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 
 import { FileInterceptor } from '@nestjs/platform-express'; // ✅ added
-
+import { Multer } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/rbac/roles.guard';
 import { Roles } from '../../auth/rbac/roles.decorator';

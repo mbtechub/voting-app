@@ -8,7 +8,7 @@ import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { MulterModule } from '@nestjs/platform-express';
 import { cloudinaryConfig } from 'src/config/cloudinary';
-
+import { Multer } from 'multer';
 import { CloudinaryService } from '../../common/cloudinary/cloudinary.service';
 @Injectable()
 export class AdminService {

@@ -4,7 +4,7 @@ import { CreateElectionDto } from './dto/create-election.dto';
 import { UpdateElectionDto } from './dto/update-election.dto';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
-
+import { Multer } from 'multer';
 function toOracleDate(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) throw new BadRequestException('Invalid date');

@@ -27,6 +27,7 @@ import { RolesGuard } from '../../auth/rbac/roles.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedFile } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common';
+import { Multer } from 'multer';
 @Controller('admin')
 export class AdminController {
   constructor(

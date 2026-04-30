@@ -1,5 +1,5 @@
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-
+import { Multer } from 'multer';
 export class CloudinaryService {
   constructor() {
     cloudinary.config({
