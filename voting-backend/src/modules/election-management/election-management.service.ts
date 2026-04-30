@@ -196,7 +196,7 @@ async disableElection(electionId: number) {
 
   async createCandidate(
     electionId: number,
-    data: CreateCandidateDto & { file?: Express.Multer.File },
+    data: CreateCandidateDto & { file?: any },
   ) {
     await this.getElectionById(electionId);
 
@@ -247,7 +247,7 @@ async disableElection(electionId: number) {
 
   async updateCandidate(
     candidateId: number,
-    data: UpdateCandidateDto & { file?: Express.Multer.File },
+    data: UpdateCandidateDto & { file?: any },
   ) {
     const existing = await this.getCandidateById(candidateId);
 

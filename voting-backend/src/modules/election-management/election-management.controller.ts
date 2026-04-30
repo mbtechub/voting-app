@@ -95,7 +95,7 @@ export class ElectionManagementController {
   @UseInterceptors(FileInterceptor('image'))
   createCandidate(
     @Param('id', ParseIntPipe) electionId: number,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() dto: CreateCandidateDto,
   ) {
     return this.svc.createCandidate(electionId, {
@@ -111,7 +111,7 @@ export class ElectionManagementController {
   @UseInterceptors(FileInterceptor('image'))
   updateCandidate(
     @Param('candidateId', ParseIntPipe) candidateId: number,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: any,
     @Body() dto: UpdateCandidateDto,
   ) {
     return this.svc.updateCandidate(candidateId, {

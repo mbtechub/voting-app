@@ -917,7 +917,7 @@ constructor(
   description?: string;
   votePrice?: number | null;
   photoUrl?: string | null;
-  file?: Express.Multer.File;
+  file?: any;
 }) {
   const cloudinary = cloudinaryConfig();
 
@@ -991,7 +991,7 @@ async updateCandidate(
     description?: string;
     votePrice?: number | null;
     photoUrl?: string | null;
-    file?: Express.Multer.File;
+    file?: any;
   },
 ) {
   const cloudinary = cloudinaryConfig();

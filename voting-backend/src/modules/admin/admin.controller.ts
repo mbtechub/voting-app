@@ -389,7 +389,7 @@ export class AdminController {
 )
 async updateCandidate(
   @Param('id', ParseIntPipe) candidateId: number,
-  @UploadedFile() file: Express.Multer.File | undefined, // ✅ WORKING
+  @UploadedFile() file: any | undefined, // ✅ WORKING
 
   @Body(new ValidationPipe({ transform: false, whitelist: false }))
   body: any,
@@ -516,7 +516,7 @@ return this.adminService.updateCandidate(candidateId, {
 )
 async createCandidate(
   @Param('id', ParseIntPipe) electionId: number,
-  @UploadedFile() file: Express.Multer.File | undefined,
+  @UploadedFile() file: any | undefined,
   @Body(new ValidationPipe({ transform: false, whitelist: false }))
   body: any,
 ) {
