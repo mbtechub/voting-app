@@ -389,14 +389,15 @@ export class AdminController {
 )
 async updateCandidate(
   @Param('id', ParseIntPipe) candidateId: number,
-  @UploadedFile() file: Express.Multer.File | undefined,
+  @UploadedFile() file: Express.Multer.File | undefined, // ✅ WORKING
 
-  // 🔥 FIX: disable DTO interference
   @Body(new ValidationPipe({ transform: false, whitelist: false }))
   body: any,
 ) {
   console.log('UPDATE BODY >>>', body);
   console.log('UPDATE FILE >>>', file?.originalname);
+
+
 
   /* ========================= NAME ========================= */
 
