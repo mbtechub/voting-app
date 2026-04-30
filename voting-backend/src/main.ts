@@ -26,18 +26,20 @@ async function bootstrap() {
       console.log('🔥 Oracle initialized');
     } catch (err: any) {
       console.error('❌ Oracle init failed:', err.message);
-      // ❗ Do NOT crash app in production unless absolutely required
+      // ❗ Do NOT crash app
     }
   }
 
-  // ✅ ALWAYS USE SAME MODULE
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY (REQUIRED FOR RENDER / HTTPS / COOKIES)
+  // 🔐 TRUST PROXY (SAFE)
   // =====================================================
-  const server = app.getHttpAdapter().getInstance();
-server.set('trust proxy', 1);
+  const instance = app.getHttpAdapter().getInstance();
+  if (instance && instance.set) {
+    instance.set('trust proxy', 1);
+  }
+
   // =====================================================
   // 📁 SERVE UPLOADS
   // =====================================================
@@ -52,7 +54,7 @@ server.set('trust proxy', 1);
   ].filter(Boolean);
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: allowedOrigins.length ? allowedOrigins : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -81,7 +83,7 @@ server.set('trust proxy', 1);
   );
 
   // =====================================================
-  // JSON HANDLER (SAFE)
+  // JSON HANDLER
   // =====================================================
   const jsonParser = bodyParser.json({ limit: '2mb' });
 
