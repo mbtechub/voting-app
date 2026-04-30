@@ -12,7 +12,7 @@ export class CloudinaryService {
   /**
    * ✅ Upload image to Cloudinary
    */
-  async uploadImage(file: Express.Multer.File): Promise<string> {
+  async uploadImage(file: any): Promise<string> {
     return new Promise((resolve, reject) => {
       cloudinary.uploader
         .upload_stream(
