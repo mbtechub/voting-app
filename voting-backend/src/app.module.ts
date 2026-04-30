@@ -36,7 +36,7 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // 🔥 SMART DB CONFIG (LOCAL + CLOUD SAFE)
+    // 🔥 SMART DB CONFIG (FINAL STABLE VERSION)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -50,31 +50,32 @@ function requireEnv(config: ConfigService, key: string): string {
           connectString.includes('_low');
 
         // ============================
-        // 🔵 AUTONOMOUS DB (TCPS - RENDER SAFE)
+        // 🔵 ORACLE AUTONOMOUS (RENDER SAFE)
         // ============================
         if (isCloud) {
           return {
             type: 'oracle',
 
+            connectString,
             username: requireEnv(config, 'DB_USER'),
             password: requireEnv(config, 'DB_PASSWORD'),
 
             extra: {
-              connectString: `(DESCRIPTION=
-                (ADDRESS=(PROTOCOL=tcps)(HOST=${requireEnv(config, 'DB_HOST')})(PORT=1522))
-                (CONNECT_DATA=(SERVICE_NAME=${requireEnv(config, 'DB_SERVICE_NAME')}))
-                (SECURITY=(SSL_SERVER_DN_MATCH=yes))
-              )`,
+              ssl: true,
+              sslServerDnMatch: false,
+              connectTimeout: 30000,
             },
+
+            poolSize: 5,
 
             synchronize: false,
             autoLoadEntities: true,
-            logging: false,
+            logging: true,
           };
         }
 
         // ============================
-        // 🟢 LOCAL ORACLE XE (UNCHANGED)
+        // 🟢 LOCAL ORACLE XE
         // ============================
         return {
           type: 'oracle',
