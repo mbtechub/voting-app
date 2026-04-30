@@ -20,6 +20,12 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
-  }
+    "noFallthroughCasesInSwitch": false,
+
+    // 🔥 CRITICAL FIX
+    "typeRoots": ["./node_modules/@types", "./src/@types"]
+  },
+
+  // 🔥 CRITICAL FIX
+  "include": ["src/**/*"]
 }
