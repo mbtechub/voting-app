@@ -9,6 +9,13 @@ import * as oracledb from 'oracledb';
 
 // ✅ SINGLE MODULE ONLY
 import { AppModule } from './app.module';
+console.log('🚀 BOOTING APP...');
+console.log('ENV CHECK:', {
+  DB_CONNECT_STRING: process.env.DB_CONNECT_STRING,
+  DB_USER: process.env.DB_USER,
+  DB_HOST: process.env.DB_HOST,
+  JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+});
 
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
