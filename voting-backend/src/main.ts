@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import * as path from 'path';
+import * as fs from 'fs'; // ✅ ADDED FOR DEBUG
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
@@ -25,6 +26,27 @@ console.log('ENV CHECK:', {
   JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
   TNS_ADMIN: process.env.TNS_ADMIN,
 });
+
+// =====================================================
+// 🧪 WALLET DEBUG (RUNS BEFORE APP START)
+// =====================================================
+try {
+  const walletPath = process.env.TNS_ADMIN!;
+
+  console.log('🧪 Checking wallet path:', walletPath);
+
+  const exists = fs.existsSync(walletPath);
+  console.log('📁 Wallet path exists:', exists);
+
+  if (exists) {
+    const files = fs.readdirSync(walletPath);
+    console.log('📂 Wallet files:', files);
+  } else {
+    console.error('❌ Wallet folder NOT found');
+  }
+} catch (err: any) {
+  console.error('❌ Wallet debug error:', err.message);
+}
 
 // =====================================================
 // 🚀 BOOTSTRAP
