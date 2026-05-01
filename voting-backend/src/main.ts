@@ -1,40 +1,43 @@
 import 'reflect-metadata';
 
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
 
-// ❌ REMOVE THIS (NOT NEEDED)
-// import * as oracledb from 'oracledb';
-
 import { AppModule } from './app.module';
 
 console.log('🚀 BOOTING APP...');
+
+// =====================================================
+// 🔥 FORCE WALLET PATH (CRITICAL FIX)
+// =====================================================
+process.env.TNS_ADMIN =
+  process.env.TNS_ADMIN ||
+  process.env.ORACLE_WALLET_PATH ||
+  path.join(process.cwd(), 'wallet');
+
 console.log('ENV CHECK:', {
   DB_CONNECT_STRING: process.env.DB_CONNECT_STRING,
   DB_USER: process.env.DB_USER,
-  DB_HOST: process.env.DB_HOST,
   JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
-  WALLET_PATH: process.env.ORACLE_WALLET_PATH,
+  TNS_ADMIN: process.env.TNS_ADMIN,
 });
 
+// =====================================================
+// 🚀 BOOTSTRAP
+// =====================================================
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
 
-  // =====================================================
-  // 🔥 WALLET CONFIG (THIN MODE CORRECT WAY)
-  // =====================================================
-  if (isProd && process.env.ORACLE_WALLET_PATH) {
-    process.env.TNS_ADMIN = process.env.ORACLE_WALLET_PATH;
-    console.log('🔥 Wallet configured via TNS_ADMIN');
-  }
+  console.log('🔥 Wallet configured via TNS_ADMIN:', process.env.TNS_ADMIN);
 
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY
+  // 🔐 TRUST PROXY (RENDER SAFE)
   // =====================================================
   const instance = app.getHttpAdapter().getInstance();
   if (instance && instance.set) {
