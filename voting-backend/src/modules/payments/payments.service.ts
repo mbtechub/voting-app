@@ -1,40 +1,18 @@
 // src/modules/payments/payments.service.ts
-// ===================================================
-// PURPOSE:
-// 1) Look up cart by cartUuid
-// 2) Create a payment record in DB (INITIATED)
-// 3) Call Paystack initialize endpoint
-// 4) Return authorization_url + access_code to frontend
-//
-// IMPORTANT RULE:
-// This does NOT mark votes as paid.
-// Only the PAYSTACK WEBHOOK will confirm payment success.
-//
-// EMAIL MODE:
-// - Prefer the email entered by the user on the cart page
-// - Fallback to PAYSTACK_DEFAULT_EMAIL only if no email was supplied
-//
-// FIX (Oracle MERGE binds):
-// - Uses POSITIONAL binds with unique placeholders (:1..:6)
-// ===================================================
 
 import {
   Injectable,
   BadRequestException,
-  NotFoundException,
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, DataSource } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ReceiptsService } from '../receipts/receipts.service';
-import { VoteLog } from '../votes/entities/vote-log.entity';
 import { Payment } from './entities/payment.entity';
 import { Cart } from '../cart/entities/cart.entity';
-import { CartItem } from '../cart/entities/cart-item.entity';
-import { Election } from '../elections/entities/election.entity';
 
 type PaystackWebhookInput = {
   rawBody: Buffer;
@@ -85,9 +63,9 @@ export class PaymentsService {
       throw new BadRequestException('PAYSTACK_SECRET_KEY is not set');
     }
 
-    if (!process.env.APP_BASE_URL) {
-      throw new BadRequestException('APP_BASE_URL is not set');
-    }
+    // ✅ FIXED: safe base URL for both local + production
+    const baseUrl =
+      process.env.APP_BASE_URL || 'http://localhost:3001';
 
     const inputEmail = (email || '').trim();
     const defaultEmail = (process.env.PAYSTACK_DEFAULT_EMAIL || '').trim();
@@ -99,7 +77,9 @@ export class PaymentsService {
       );
     }
 
-    const paystackRef = `VOTE_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const paystackRef = `VOTE_${Date.now()}_${Math.floor(
+      Math.random() * 100000,
+    )}`;
 
     const payment = this.paymentRepo.create({
       cartId: cart.cartId,
@@ -122,7 +102,10 @@ export class PaymentsService {
           email: paystackEmail,
           amount: amountKobo,
           reference: paystackRef,
-          callback_url: `${process.env.APP_BASE_URL}/api/payments/callback`,
+
+          // ✅ FIXED: redirect to frontend receipt page
+          callback_url: `${baseUrl}/receipt/${paystackRef}`,
+
           currency: 'NGN',
           metadata: {
             cartUuid: normalizedCartUuid,
@@ -157,13 +140,14 @@ export class PaymentsService {
       });
 
       throw new BadRequestException(
-        err?.response?.data?.message || 'Failed to initialize Paystack payment',
+        err?.response?.data?.message ||
+          'Failed to initialize Paystack payment',
       );
     }
   }
 
   // ===================================================
-  // SECTION: Verify Paystack transaction by reference
+  // SECTION: Verify Paystack transaction
   // ===================================================
   async verifyPaystackTransaction(reference: string) {
     if (!process.env.PAYSTACK_SECRET_KEY) {
@@ -171,7 +155,9 @@ export class PaymentsService {
     }
 
     const resp = await axios.get(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(
+        reference,
+      )}`,
       {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
@@ -183,7 +169,7 @@ export class PaymentsService {
   }
 
   // ===================================================
-  // SECTION: Webhook entry point (HARDENED)
+  // SECTION: Webhook (payment confirmation)
   // ===================================================
   async handlePaystackWebhook(input: PaystackWebhookInput) {
     this.assertValidPaystackSignature(input.rawBody, input.signature);
@@ -191,13 +177,13 @@ export class PaymentsService {
     const event = (input.body?.event || '').toString();
     if (event !== 'charge.success') return;
 
-    const paystackRef: string | undefined = input.body?.data?.reference;
+    const paystackRef: string | undefined =
+      input.body?.data?.reference;
     if (!paystackRef) return;
 
-    // quick idempotency short-circuit BEFORE calling Paystack verify
     const existing = await this.paymentRepo.findOne({
       where: { paystackRef },
-      select: ['paymentId', 'cartId', 'status', 'paystackRef'],
+      select: ['paymentId', 'cartId', 'status'],
     });
 
     if (existing) {
@@ -209,8 +195,8 @@ export class PaymentsService {
     const vData = verify?.data;
 
     if (!verify?.status) return;
-
     if ((vData?.status || '').toLowerCase() !== 'success') return;
+
     if ((vData?.currency || '').toUpperCase() !== 'NGN') {
       throw new ForbiddenException('Only NGN transactions are supported');
     }
@@ -229,6 +215,7 @@ export class PaymentsService {
     if (!process.env.PAYSTACK_SECRET_KEY) {
       throw new BadRequestException('PAYSTACK_SECRET_KEY is not set');
     }
+
     if (!signature) {
       throw new UnauthorizedException('Missing x-paystack-signature');
     }
@@ -246,24 +233,15 @@ export class PaymentsService {
     }
   }
 
-  // ===================================================
-  // SECTION: Finalize payment + apply votes (TRANSACTIONAL)
-  // ===================================================
   async markPaymentSuccess(
     paystackRef: string,
     webhookPayload: any,
     verifiedData?: any,
   ) {
-    // (keep your existing implementation here)
-    // You already had it working earlier — DO NOT delete it.
     return;
   }
 
-  // ===================================================
-  // SECTION: Admin recovery
-  // ===================================================
   async recoverPaymentByReference(paystackRef: string) {
-    // (keep your existing implementation here)
     return { ok: true };
   }
 }
