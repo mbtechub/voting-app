@@ -13,6 +13,7 @@ import { Repository, DataSource } from 'typeorm';
 import { ReceiptsService } from '../receipts/receipts.service';
 import { Payment } from './entities/payment.entity';
 import { Cart } from '../cart/entities/cart.entity';
+import { CartItem } from '../cart/entities/cart-item.entity';
 
 type PaystackWebhookInput = {
   rawBody: Buffer;
@@ -30,52 +31,33 @@ export class PaymentsService {
   ) {}
 
   // ===================================================
-  // SECTION: Initiate Paystack payment for a cart
+  // INITIATE PAYMENT
   // ===================================================
   async initiatePaystack(cartUuid: string, email?: string) {
-    const normalizedCartUuid = (cartUuid || '').trim();
-    if (!normalizedCartUuid) {
-      throw new BadRequestException('cartUuid is required');
-    }
-
-    const cart = await this.paymentRepo.manager
-      .createQueryBuilder(Cart, 'c')
-      .where('LOWER(TRIM(c.cartUuid)) = LOWER(TRIM(:cartUuid))', {
-        cartUuid: normalizedCartUuid,
-      })
-      .getOne();
-
-    if (!cart) {
-      throw new BadRequestException('Cart not found');
-    }
-
-    if ((cart.status || '').toUpperCase() !== 'PENDING') {
-      throw new BadRequestException(
-        `Cart is not payable (status: ${cart.status})`,
-      );
-    }
-
-    if (!cart.totalAmount || Number(cart.totalAmount) <= 0) {
-      throw new BadRequestException('Cart total amount is invalid');
-    }
-
     if (!process.env.PAYSTACK_SECRET_KEY) {
       throw new BadRequestException('PAYSTACK_SECRET_KEY is not set');
     }
 
-    // ✅ FIXED: safe base URL for both local + production
+    const cart = await this.dataSource
+      .getRepository(Cart)
+      .createQueryBuilder('c')
+      .where('LOWER(TRIM(c.cartUuid)) = LOWER(TRIM(:cartUuid))', {
+        cartUuid,
+      })
+      .getOne();
+
+    if (!cart) throw new BadRequestException('Cart not found');
+
+    if (cart.status !== 'PENDING') {
+      throw new BadRequestException(`Cart not payable (${cart.status})`);
+    }
+
+    if (!cart.totalAmount || Number(cart.totalAmount) <= 0) {
+      throw new BadRequestException('Invalid cart amount');
+    }
+
     const baseUrl =
       process.env.APP_BASE_URL || 'http://localhost:3001';
-
-    const inputEmail = (email || '').trim();
-    const defaultEmail = (process.env.PAYSTACK_DEFAULT_EMAIL || '').trim();
-    const paystackEmail = inputEmail || defaultEmail;
-
-    if (!paystackEmail || !paystackEmail.includes('@')) {
-      throw new BadRequestException(
-        'A valid email is required for Paystack payment initialization',
-      );
-    }
 
     const paystackRef = `VOTE_${Date.now()}_${Math.floor(
       Math.random() * 100000,
@@ -86,68 +68,35 @@ export class PaymentsService {
       paystackRef,
       amount: Number(cart.totalAmount),
       status: 'INITIATED',
-      rawResponse: null,
-      paidAt: null,
       createdAt: new Date(),
     });
 
     await this.paymentRepo.save(payment);
 
-    const amountKobo = Math.round(Number(cart.totalAmount) * 100);
-
-    try {
-      const resp = await axios.post(
-        'https://api.paystack.co/transaction/initialize',
-        {
-          email: paystackEmail,
-          amount: amountKobo,
-          reference: paystackRef,
-
-          // ✅ FIXED: redirect to frontend receipt page
-          callback_url: `${baseUrl}/receipt/${paystackRef}`,
-
-          currency: 'NGN',
-          metadata: {
-            cartUuid: normalizedCartUuid,
-            paymentId: payment.paymentId,
-            customerEmail: paystackEmail,
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      const data = resp.data?.data;
-      if (!data?.authorization_url || !data?.access_code) {
-        throw new BadRequestException('Paystack initialization failed');
-      }
-
-      return {
+    const resp = await axios.post(
+      'https://api.paystack.co/transaction/initialize',
+      {
+        email: email || process.env.PAYSTACK_DEFAULT_EMAIL,
+        amount: Math.round(Number(cart.totalAmount) * 100),
         reference: paystackRef,
-        authorizationUrl: data.authorization_url,
-        authorization_url: data.authorization_url,
-        accessCode: data.access_code,
-        access_code: data.access_code,
-      };
-    } catch (err: any) {
-      console.error('Paystack initialize error:', {
-        status: err?.response?.status,
-        data: err?.response?.data,
-      });
+        callback_url: `${baseUrl}/receipt/${paystackRef}`,
+        currency: 'NGN',
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      },
+    );
 
-      throw new BadRequestException(
-        err?.response?.data?.message ||
-          'Failed to initialize Paystack payment',
-      );
-    }
+    return {
+      reference: paystackRef,
+      authorization_url: resp.data.data.authorization_url,
+    };
   }
 
   // ===================================================
-  // SECTION: Verify Paystack transaction
+  // VERIFY TRANSACTION
   // ===================================================
   async verifyPaystackTransaction(reference: string) {
     if (!process.env.PAYSTACK_SECRET_KEY) {
@@ -169,55 +118,59 @@ export class PaymentsService {
   }
 
   // ===================================================
-  // SECTION: Webhook (payment confirmation)
+  // WEBHOOK
   // ===================================================
   async handlePaystackWebhook(input: PaystackWebhookInput) {
     this.assertValidPaystackSignature(input.rawBody, input.signature);
 
-    const event = (input.body?.event || '').toString();
+    const event = input.body?.event;
     if (event !== 'charge.success') return;
 
-    const paystackRef: string | undefined =
-      input.body?.data?.reference;
-    if (!paystackRef) return;
+    const ref = input.body?.data?.reference;
+    if (typeof ref !== 'string') return;
 
     const existing = await this.paymentRepo.findOne({
-      where: { paystackRef },
-      select: ['paymentId', 'cartId', 'status'],
+      where: { paystackRef: ref },
     });
 
-    if (existing) {
-      const st = (existing.status || '').toUpperCase();
-      if (st === 'SUCCESS' || st === 'PARTIALLY_APPLIED') return;
-    }
+const status = existing?.status;
 
-    const verify = await this.verifyPaystackTransaction(paystackRef);
+if (
+  typeof status === 'string' &&
+  ['SUCCESS', 'PARTIALLY_APPLIED'].includes(status)
+) {
+  return;
+}
+    const verify = await this.verifyPaystackTransaction(ref);
     const vData = verify?.data;
 
     if (!verify?.status) return;
     if ((vData?.status || '').toLowerCase() !== 'success') return;
 
     if ((vData?.currency || '').toUpperCase() !== 'NGN') {
-      throw new ForbiddenException('Only NGN transactions are supported');
+      throw new ForbiddenException('Only NGN supported');
     }
 
-    if ((vData?.reference || '') !== paystackRef) {
-      throw new BadRequestException('Paystack reference mismatch');
+    if ((vData?.reference || '') !== ref) {
+      throw new BadRequestException('Reference mismatch');
     }
 
-    await this.markPaymentSuccess(paystackRef, input.body, vData);
+    await this.markPaymentSuccess(ref, vData);
   }
 
   // ===================================================
-  // SECTION: Signature validation
+  // SIGNATURE VALIDATION (SAFE)
   // ===================================================
-  private assertValidPaystackSignature(rawBody: Buffer, signature?: string) {
+  private assertValidPaystackSignature(
+    rawBody: Buffer,
+    signature?: string,
+  ) {
     if (!process.env.PAYSTACK_SECRET_KEY) {
-      throw new BadRequestException('PAYSTACK_SECRET_KEY is not set');
+      throw new BadRequestException('Missing Paystack key');
     }
 
     if (!signature) {
-      throw new UnauthorizedException('Missing x-paystack-signature');
+      throw new UnauthorizedException('Missing signature');
     }
 
     const hash = crypto
@@ -229,19 +182,84 @@ export class PaymentsService {
     const b = Buffer.from(signature);
 
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-      throw new UnauthorizedException('Invalid Paystack signature');
+      throw new UnauthorizedException('Invalid signature');
     }
   }
 
-  async markPaymentSuccess(
-    paystackRef: string,
-    webhookPayload: any,
-    verifiedData?: any,
-  ) {
-    return;
+  // ===================================================
+  // CORE PAYMENT LOGIC
+  // ===================================================
+  async markPaymentSuccess(ref: string, verifiedData: any) {
+    await this.dataSource.transaction(async (manager) => {
+      const payment = await manager.findOne(Payment, {
+        where: { paystackRef: ref },
+      });
+
+      if (!payment) return;
+      if (payment.status === 'SUCCESS') return;
+
+      payment.status = 'SUCCESS';
+      payment.paidAt = new Date();
+      payment.rawResponse = JSON.stringify(verifiedData);
+      await manager.save(payment);
+
+      const cart = await manager.findOne(Cart, {
+        where: { cartId: payment.cartId },
+      });
+
+      if (!cart) return;
+
+      cart.status = 'PAID';
+      await manager.save(cart);
+
+      const items = await manager
+        .createQueryBuilder(CartItem, 'ci')
+        .where('ci.cartId = :cartId', { cartId: cart.cartId })
+        .getMany();
+
+      for (const item of items) {
+        await manager.query(
+          `
+          MERGE INTO ELECTION_RESULTS r
+          USING dual
+          ON (r.election_id = :1 AND r.candidate_id = :2)
+          WHEN MATCHED THEN
+            UPDATE SET vote_count = r.vote_count + :3
+          WHEN NOT MATCHED THEN
+            INSERT (election_id, candidate_id, vote_count)
+            VALUES (:1, :2, :3)
+          `,
+          [item.electionId, item.candidateId, item.voteQty],
+        );
+
+        await manager.query(
+          `
+          INSERT INTO VOTE_LOGS
+          (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, STATUS)
+          VALUES (:1, :2, :3, :4, 'APPLIED')
+          `,
+          [ref, item.electionId, item.candidateId, item.voteQty],
+        );
+      }
+
+      // optional receipt
+      try {
+        if ('getReceiptByReference' in this.receiptsService) {
+          await (this.receiptsService as any).getReceiptByReference(ref);
+        }
+      } catch (err: any) {
+        console.warn('Receipt generation failed:', err?.message);
+      }
+    });
   }
 
-  async recoverPaymentByReference(paystackRef: string) {
+  async recoverPaymentByReference(ref: string) {
+    const verify = await this.verifyPaystackTransaction(ref);
+
+    if (verify?.data?.status === 'success') {
+      await this.markPaymentSuccess(ref, verify.data);
+    }
+
     return { ok: true };
   }
 }
