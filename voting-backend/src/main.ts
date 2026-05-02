@@ -13,7 +13,7 @@ import { AppModule } from './app.module';
 console.log('🚀 BOOTING APP...');
 
 // =====================================================
-// 🔥 FORCE WALLET PATH (CRITICAL FOR RENDER)
+// 🔥 FORCE WALLET PATH (RENDER SAFE)
 // =====================================================
 process.env.TNS_ADMIN =
   process.env.TNS_ADMIN ||
@@ -35,14 +35,11 @@ try {
 
   console.log('🧪 Checking wallet path:', walletPath);
 
-  const exists = fs.existsSync(walletPath);
-  console.log('📁 Wallet path exists:', exists);
-
-  if (exists) {
-    const files = fs.readdirSync(walletPath);
-    console.log('📂 Wallet files:', files);
-  } else {
+  if (!fs.existsSync(walletPath)) {
     console.error('❌ Wallet folder NOT found');
+  } else {
+    console.log('📁 Wallet path exists: true');
+    console.log('📂 Wallet files:', fs.readdirSync(walletPath));
   }
 } catch (err: any) {
   console.error('❌ Wallet debug error:', err.message);
@@ -59,10 +56,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY (IMPORTANT FOR RENDER / PAYSTACK)
+  // 🔐 TRUST PROXY (REQUIRED FOR RENDER / PAYSTACK)
   // =====================================================
   const instance = app.getHttpAdapter().getInstance();
-  if (instance && instance.set) {
+  if (instance?.set) {
     instance.set('trust proxy', 1);
   }
 
@@ -85,12 +82,12 @@ async function bootstrap() {
   });
 
   // =====================================================
-  // PREFIX
+  // 🌍 GLOBAL PREFIX
   // =====================================================
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔐 PAYSTACK RAW BODY (DO NOT TOUCH)
+  // 🔐 PAYSTACK RAW BODY (CRITICAL)
   // =====================================================
   app.use(
     '/api/payments/webhook',
@@ -103,7 +100,7 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // JSON HANDLER
+  // JSON HANDLER (SAFE)
   // =====================================================
   const jsonParser = bodyParser.json({ limit: '2mb' });
 
@@ -139,14 +136,14 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // 🚨 HEALTH CHECK (IMPORTANT FOR RENDER PORT DETECTION)
+  // 🚨 HEALTH CHECK (RENDER NEEDS THIS)
   // =====================================================
   app.getHttpAdapter().get('/health', (_req, res) => {
     res.status(200).send('OK');
   });
 
   // =====================================================
-  // 🚀 START SERVER (FIXED FOR RENDER)
+  // 🚀 START SERVER (CRITICAL FIX)
   // =====================================================
   const port = Number(process.env.PORT || 3000);
 
@@ -170,7 +167,7 @@ async function bootstrap() {
     } catch (err: any) {
       console.error('❌ DB CONNECTION FAILED:', err.message);
     }
-  }, 3000); // delay so server still boots even if DB fails
+  }, 5000);
 }
 
 bootstrap();
