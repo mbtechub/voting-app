@@ -8,18 +8,44 @@ import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
 
-import { AppModule } from './app.module';
+import { AppModule } from './app.module.prod';
 
 console.log('🚀 BOOTING APP...');
 
 // =====================================================
-// 🔥 CLEAN ENV CHECK (NO WALLET)
+// 🔥 WALLET SETUP (CRITICAL FOR ORACLE)
+// =====================================================
+process.env.TNS_ADMIN =
+  process.env.TNS_ADMIN ||
+  process.env.ORACLE_WALLET_PATH ||
+  path.join(process.cwd(), 'wallet');
+
+// =====================================================
+// 🔍 ENV CHECK
 // =====================================================
 console.log('ENV CHECK:', {
   DB_CONNECT_STRING: process.env.DB_CONNECT_STRING,
   DB_USER: process.env.DB_USER,
   JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
+  TNS_ADMIN: process.env.TNS_ADMIN,
 });
+
+// =====================================================
+// 🧪 WALLET DEBUG (SAFE)
+// =====================================================
+try {
+  const walletPath = process.env.TNS_ADMIN!;
+  console.log('🧪 Wallet path:', walletPath);
+
+  if (fs.existsSync(walletPath)) {
+    console.log('📁 Wallet exists');
+    console.log('📂 Files:', fs.readdirSync(walletPath));
+  } else {
+    console.error('❌ Wallet NOT found at:', walletPath);
+  }
+} catch (err: any) {
+  console.error('❌ Wallet debug error:', err.message);
+}
 
 // =====================================================
 // 🚀 BOOTSTRAP
@@ -61,7 +87,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔐 PAYSTACK RAW BODY (CRITICAL)
+  // 🔐 PAYSTACK RAW BODY
   // =====================================================
   app.use(
     '/api/payments/webhook',
@@ -74,7 +100,7 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // JSON HANDLER (SAFE)
+  // JSON HANDLER
   // =====================================================
   const jsonParser = bodyParser.json({ limit: '2mb' });
 
@@ -110,7 +136,7 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // 🚨 HEALTH CHECK (RENDER NEEDS THIS)
+  // 🚨 HEALTH CHECK
   // =====================================================
   app.getHttpAdapter().get('/health', (_req, res) => {
     res.status(200).send('OK');

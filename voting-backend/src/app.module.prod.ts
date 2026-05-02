@@ -1,3 +1,4 @@
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -38,11 +39,11 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // 🔥 FINAL: DIRECT ORACLE CONNECTION (NO WALLET)
+    // 🔥 FINAL: ORACLE WALLET CONNECTION (STABLE)
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
-        const nodeEnv = process.env.NODE_ENV;
+        const tnsAdmin = requireEnv(config, 'TNS_ADMIN');
 
         return {
           type: 'oracle' as const,
@@ -50,27 +51,26 @@ function requireEnv(config: ConfigService, key: string): string {
           username: requireEnv(config, 'DB_USER'),
           password: requireEnv(config, 'DB_PASSWORD'),
 
-          // ✅ MUST be this format in env:
-          // adb.af-johannesburg-1.oraclecloud.com:1522/votingapplifedb_medium?ssl=true
+          // 🔥 MUST MATCH tnsnames.ora
           connectString: requireEnv(config, 'DB_CONNECT_STRING'),
 
           synchronize: false,
           autoLoadEntities: true,
-          logging: nodeEnv !== 'production',
+          logging: false,
 
-          // 🔥 CRITICAL FOR RENDER
+          // 🔥 CRITICAL FOR RENDER STABILITY
           retryAttempts: 10,
           retryDelay: 3000,
           keepConnectionAlive: true,
 
-          // 🔥 REQUIRED FOR ORACLE TCPS
+          // 🔥 WALLET CONFIG (REQUIRED)
           extra: {
+            configDir: tnsAdmin,
+
             poolMin: 1,
             poolMax: 5,
             poolIncrement: 1,
             queueTimeout: 60000,
-
-            ssl: true, // 🔥 THIS IS IMPORTANT
           },
         };
       },
