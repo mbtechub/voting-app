@@ -38,6 +38,10 @@ export class PaymentsService {
       throw new BadRequestException('PAYSTACK_SECRET_KEY is not set');
     }
 
+    if (!process.env.FRONTEND_BASE_URL) {
+      throw new BadRequestException('FRONTEND_BASE_URL is not set');
+    }
+
     const cart = await this.dataSource
       .getRepository(Cart)
       .createQueryBuilder('c')
@@ -56,9 +60,6 @@ export class PaymentsService {
       throw new BadRequestException('Invalid cart amount');
     }
 
-    const baseUrl =
-      process.env.APP_BASE_URL || 'http://localhost:3001';
-
     const paystackRef = `VOTE_${Date.now()}_${Math.floor(
       Math.random() * 100000,
     )}`;
@@ -73,13 +74,24 @@ export class PaymentsService {
 
     await this.paymentRepo.save(payment);
 
+    const userEmail =
+      (email && email.trim()) ||
+      (process.env.PAYSTACK_DEFAULT_EMAIL || '').trim();
+
+    if (!userEmail || !userEmail.includes('@')) {
+      throw new BadRequestException('Valid email required');
+    }
+
     const resp = await axios.post(
       'https://api.paystack.co/transaction/initialize',
       {
-        email: email || process.env.PAYSTACK_DEFAULT_EMAIL,
+        email: userEmail,
         amount: Math.round(Number(cart.totalAmount) * 100),
         reference: paystackRef,
-        callback_url: `${baseUrl}/receipt/${paystackRef}`,
+
+        // 🔥 FIXED: redirect goes to FRONTEND
+        callback_url: `${process.env.FRONTEND_BASE_URL}/receipt/${paystackRef}`,
+
         currency: 'NGN',
       },
       {
@@ -133,14 +145,15 @@ export class PaymentsService {
       where: { paystackRef: ref },
     });
 
-const status = existing?.status;
+    const status = existing?.status;
 
-if (
-  typeof status === 'string' &&
-  ['SUCCESS', 'PARTIALLY_APPLIED'].includes(status)
-) {
-  return;
-}
+    if (
+      typeof status === 'string' &&
+      ['SUCCESS', 'PARTIALLY_APPLIED'].includes(status)
+    ) {
+      return;
+    }
+
     const verify = await this.verifyPaystackTransaction(ref);
     const vData = verify?.data;
 
@@ -159,7 +172,7 @@ if (
   }
 
   // ===================================================
-  // SIGNATURE VALIDATION (SAFE)
+  // SIGNATURE VALIDATION
   // ===================================================
   private assertValidPaystackSignature(
     rawBody: Buffer,
@@ -187,7 +200,7 @@ if (
   }
 
   // ===================================================
-  // CORE PAYMENT LOGIC
+  // FINALIZE PAYMENT
   // ===================================================
   async markPaymentSuccess(ref: string, verifiedData: any) {
     await this.dataSource.transaction(async (manager) => {
@@ -242,7 +255,7 @@ if (
         );
       }
 
-      // optional receipt
+      // receipt generation (safe)
       try {
         if ('getReceiptByReference' in this.receiptsService) {
           await (this.receiptsService as any).getReceiptByReference(ref);
