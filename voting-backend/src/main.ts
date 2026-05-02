@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import * as path from 'path';
-import * as fs from 'fs'; // ✅ ADDED FOR DEBUG
+import * as fs from 'fs';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
@@ -13,7 +13,7 @@ import { AppModule } from './app.module';
 console.log('🚀 BOOTING APP...');
 
 // =====================================================
-// 🔥 FORCE WALLET PATH (CRITICAL FIX)
+// 🔥 FORCE WALLET PATH (CRITICAL FOR RENDER)
 // =====================================================
 process.env.TNS_ADMIN =
   process.env.TNS_ADMIN ||
@@ -28,7 +28,7 @@ console.log('ENV CHECK:', {
 });
 
 // =====================================================
-// 🧪 WALLET DEBUG (RUNS BEFORE APP START)
+// 🧪 WALLET DEBUG
 // =====================================================
 try {
   const walletPath = process.env.TNS_ADMIN!;
@@ -59,7 +59,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY (RENDER SAFE)
+  // 🔐 TRUST PROXY (IMPORTANT FOR RENDER / PAYSTACK)
   // =====================================================
   const instance = app.getHttpAdapter().getInstance();
   if (instance && instance.set) {
@@ -90,7 +90,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔐 PAYSTACK RAW BODY
+  // 🔐 PAYSTACK RAW BODY (DO NOT TOUCH)
   // =====================================================
   app.use(
     '/api/payments/webhook',
@@ -139,28 +139,38 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // 🚀 START SERVER
+  // 🚨 HEALTH CHECK (IMPORTANT FOR RENDER PORT DETECTION)
+  // =====================================================
+  app.getHttpAdapter().get('/health', (_req, res) => {
+    res.status(200).send('OK');
+  });
+
+  // =====================================================
+  // 🚀 START SERVER (FIXED FOR RENDER)
   // =====================================================
   const port = Number(process.env.PORT || 3000);
+
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Server running on port ${port}`);
   console.log(`🌍 Mode: ${isProd ? 'PRODUCTION' : 'LOCAL'}`);
 
   // =====================================================
-  // 🧠 DB DEBUG
+  // 🧠 DB DEBUG (NON-BLOCKING)
   // =====================================================
-  try {
-    const ds = app.get(DataSource);
+  setTimeout(async () => {
+    try {
+      const ds = app.get(DataSource);
 
-    const result = await ds.query(
-      `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
-    );
+      const result = await ds.query(
+        `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
+      );
 
-    console.log('✅ DB CONNECTED:', result);
-  } catch (err: any) {
-    console.error('❌ DB CONNECTION FAILED:', err.message);
-  }
+      console.log('✅ DB CONNECTED:', result);
+    } catch (err: any) {
+      console.error('❌ DB CONNECTION FAILED:', err.message);
+    }
+  }, 3000); // delay so server still boots even if DB fails
 }
 
 bootstrap();
