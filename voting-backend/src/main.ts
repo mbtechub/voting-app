@@ -13,45 +13,19 @@ import { AppModule } from './app.module';
 console.log('🚀 BOOTING APP...');
 
 // =====================================================
-// 🔥 FORCE WALLET PATH (RENDER SAFE)
+// 🔥 CLEAN ENV CHECK (NO WALLET)
 // =====================================================
-process.env.TNS_ADMIN =
-  process.env.TNS_ADMIN ||
-  process.env.ORACLE_WALLET_PATH ||
-  path.join(process.cwd(), 'wallet');
-
 console.log('ENV CHECK:', {
   DB_CONNECT_STRING: process.env.DB_CONNECT_STRING,
   DB_USER: process.env.DB_USER,
   JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'MISSING',
-  TNS_ADMIN: process.env.TNS_ADMIN,
 });
-
-// =====================================================
-// 🧪 WALLET DEBUG
-// =====================================================
-try {
-  const walletPath = process.env.TNS_ADMIN!;
-
-  console.log('🧪 Checking wallet path:', walletPath);
-
-  if (!fs.existsSync(walletPath)) {
-    console.error('❌ Wallet folder NOT found');
-  } else {
-    console.log('📁 Wallet path exists: true');
-    console.log('📂 Wallet files:', fs.readdirSync(walletPath));
-  }
-} catch (err: any) {
-  console.error('❌ Wallet debug error:', err.message);
-}
 
 // =====================================================
 // 🚀 BOOTSTRAP
 // =====================================================
 async function bootstrap() {
   const isProd = process.env.NODE_ENV === 'production';
-
-  console.log('🔥 Wallet configured via TNS_ADMIN:', process.env.TNS_ADMIN);
 
   const app = await NestFactory.create(AppModule);
 
@@ -143,7 +117,7 @@ async function bootstrap() {
   });
 
   // =====================================================
-  // 🚀 START SERVER (CRITICAL FIX)
+  // 🚀 START SERVER
   // =====================================================
   const port = Number(process.env.PORT || 3000);
 

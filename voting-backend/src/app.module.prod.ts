@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -39,54 +38,41 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // 🔥 FIXED: NON-BLOCKING DB CONFIG (RENDER SAFE)
+    // 🔥 FINAL: DIRECT ORACLE CONNECTION (NO WALLET)
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
         const nodeEnv = process.env.NODE_ENV;
-        const tnsAdmin = config.get<string>('TNS_ADMIN');
 
-        const useWallet = nodeEnv === 'production' && !!tnsAdmin;
-
-        const baseConfig = {
+        return {
           type: 'oracle' as const,
 
           username: requireEnv(config, 'DB_USER'),
           password: requireEnv(config, 'DB_PASSWORD'),
+
+          // ✅ MUST be this format in env:
+          // adb.af-johannesburg-1.oraclecloud.com:1522/votingapplifedb_medium?ssl=true
           connectString: requireEnv(config, 'DB_CONNECT_STRING'),
 
           synchronize: false,
           autoLoadEntities: true,
           logging: nodeEnv !== 'production',
 
-          // 🔥 CRITICAL FIXES
+          // 🔥 CRITICAL FOR RENDER
           retryAttempts: 10,
           retryDelay: 3000,
           keepConnectionAlive: true,
+
+          // 🔥 REQUIRED FOR ORACLE TCPS
+          extra: {
+            poolMin: 1,
+            poolMax: 5,
+            poolIncrement: 1,
+            queueTimeout: 60000,
+
+            ssl: true, // 🔥 THIS IS IMPORTANT
+          },
         };
-
-        // ============================
-        // 🔵 PRODUCTION (WALLET MODE)
-        // ============================
-        if (useWallet) {
-          return {
-            ...baseConfig,
-
-            extra: {
-              configDir: tnsAdmin,
-
-              poolMin: 1,
-              poolMax: 5,
-              poolIncrement: 1,
-              queueTimeout: 60000,
-            },
-          };
-        }
-
-        // ============================
-        // 🟢 LOCAL DEV
-        // ============================
-        return baseConfig;
       },
     }),
 
