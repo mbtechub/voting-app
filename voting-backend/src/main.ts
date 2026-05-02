@@ -13,7 +13,7 @@ import { AppModule } from './app.module.prod';
 console.log('🚀 BOOTING APP...');
 
 // =====================================================
-// 🔥 WALLET SETUP (CRITICAL FOR ORACLE)
+// 🔥 WALLET SETUP (ORACLE)
 // =====================================================
 process.env.TNS_ADMIN =
   process.env.TNS_ADMIN ||
@@ -31,7 +31,7 @@ console.log('ENV CHECK:', {
 });
 
 // =====================================================
-// 🧪 WALLET DEBUG (SAFE)
+// 🧪 WALLET DEBUG
 // =====================================================
 try {
   const walletPath = process.env.TNS_ADMIN!;
@@ -56,7 +56,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY (REQUIRED FOR RENDER / PAYSTACK)
+  // 🔐 TRUST PROXY (RENDER)
   // =====================================================
   const instance = app.getHttpAdapter().getInstance();
   if (instance?.set) {
@@ -87,10 +87,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔐 PAYSTACK RAW BODY
+  // 🔥 CRITICAL FIX: PAYSTACK RAW BODY (CORRECT ROUTE)
   // =====================================================
   app.use(
-    '/api/payments/webhook',
+    '/api/paystack/webhook',
     bodyParser.json({
       limit: '2mb',
       verify: (req: any, _res, buf) => {
@@ -107,7 +107,7 @@ async function bootstrap() {
   app.use((req: any, res: any, next: any) => {
     const url = (req.originalUrl || req.url || '').toString();
 
-    if (url.startsWith('/api/payments/webhook')) return next();
+    if (url.startsWith('/api/paystack/webhook')) return next();
 
     const contentType = req.headers['content-type'] || '';
     if (contentType.includes('multipart/form-data')) return next();
@@ -136,14 +136,14 @@ async function bootstrap() {
   );
 
   // =====================================================
-  // 🚨 HEALTH CHECK
+  // HEALTH CHECK
   // =====================================================
   app.getHttpAdapter().get('/health', (_req, res) => {
     res.status(200).send('OK');
   });
 
   // =====================================================
-  // 🚀 START SERVER
+  // START SERVER
   // =====================================================
   const port = Number(process.env.PORT || 3000);
 
@@ -153,7 +153,7 @@ async function bootstrap() {
   console.log(`🌍 Mode: ${isProd ? 'PRODUCTION' : 'LOCAL'}`);
 
   // =====================================================
-  // 🧠 DB DEBUG (NON-BLOCKING)
+  // DB DEBUG
   // =====================================================
   setTimeout(async () => {
     try {
