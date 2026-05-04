@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -13,7 +12,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PublicModule } from './modules/public/public.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
-import { PaystackModule } from './paystack/paystack.module';
+// ❌ REMOVED PaystackModule (causing webhook conflict)
 import { ElectionManagementModule } from './modules/election-management/election-management.module';
 
 function requireEnv(config: ConfigService, key: string): string {
@@ -78,12 +77,11 @@ function requireEnv(config: ConfigService, key: string): string {
 
     AuthModule,
     CartModule,
-    PaymentsModule,
+    PaymentsModule,        // ✅ THIS handles webhook correctly
     WebhooksModule,
     AdminModule,
     PublicModule,
     ReceiptsModule,
-    PaystackModule,
     ElectionManagementModule,
   ],
 

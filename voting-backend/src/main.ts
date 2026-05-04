@@ -87,10 +87,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔥 CRITICAL FIX: PAYSTACK RAW BODY (CORRECT ROUTE)
+  // 🔥 FIXED: PAYSTACK RAW BODY (CORRECT ROUTE)
   // =====================================================
   app.use(
-    '/api/paystack/webhook',
+    '/api/payments/webhook',
     bodyParser.json({
       limit: '2mb',
       verify: (req: any, _res, buf) => {
@@ -107,7 +107,8 @@ async function bootstrap() {
   app.use((req: any, res: any, next: any) => {
     const url = (req.originalUrl || req.url || '').toString();
 
-    if (url.startsWith('/api/paystack/webhook')) return next();
+    // ✅ FIXED ROUTE CHECK
+    if (url.startsWith('/api/payments/webhook')) return next();
 
     const contentType = req.headers['content-type'] || '';
     if (contentType.includes('multipart/form-data')) return next();
