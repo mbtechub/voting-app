@@ -197,7 +197,7 @@ export class PaymentsService {
   }
 
   // ===================================================
-  // FINALIZE PAYMENT (🔥 FIXED)
+  // FINALIZE PAYMENT (🔥 FINAL FIX)
   // ===================================================
   async markPaymentSuccess(ref: string, verifiedData: any) {
     await this.dataSource.transaction(async (manager) => {
@@ -222,11 +222,13 @@ export class PaymentsService {
       cart.status = 'PAID';
       await manager.save(cart);
 
-      // 🔥 FIXED FOR ORACLE
-      const items = await manager
-        .createQueryBuilder(CartItem, 'ci')
-        .where('ci."CART_ID" = :cartId', { cartId: cart.cartId })
-        .getMany();
+      // ✅ FINAL FIX (NO QUERY BUILDER)
+      const items = await manager.find(CartItem, {
+  where: {
+    cart: { cartId: cart.cartId },
+  },
+  relations: ['cart'],
+});
 
       for (const item of items) {
         await manager.query(
