@@ -31,6 +31,8 @@ function isPaidLikeStatus(status?: string) {
 
 export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
+  // ✅ ALL HOOKS FIRST
+
   const [cart, setCart] = useState<CartResponse | null>(() => {
     if (!initial) return null;
     return { ...initial, items: initial.items ?? [] };
@@ -43,7 +45,7 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
   const [err, setErr] = useState<string | null>(null);
   const [clearing, setClearing] = useState(false);
 
-  // LOAD CART
+  // ✅ LOAD CART IF NEEDED
   useEffect(() => {
     if (initial) return;
 
@@ -69,12 +71,16 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
       .finally(() => setLoadingInit(false));
   }, [initial]);
 
+  // ✅ SAFE HOOKS
+
   const status = (cart?.status || '').toUpperCase();
 
   const paidLike = useMemo(() => isPaidLikeStatus(status), [status]);
   const isPayable = useMemo(() => status === 'PENDING', [status]);
+
   const hasItems = (cart?.items?.length ?? 0) > 0;
 
+  // ✅ FIX: MOVE grouped UP (CRITICAL)
   const grouped = useMemo(() => {
     const map = new Map<number, CartItem[]>();
 
@@ -88,7 +94,7 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
     return Array.from(map.entries());
   }, [cart?.items]);
 
-  // ✅ FIXED: REMOVE BAD REDIRECT
+  // ✅ HANDLE PAYMENT REDIRECT
   useEffect(() => {
     if (!cart) return;
 
@@ -96,11 +102,11 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
       localStorage.removeItem('cartUuid');
       localStorage.setItem('cartCount', '0');
       window.dispatchEvent(new Event('cartUpdated'));
-
-      // ❌ DO NOT REDIRECT HERE
-      // Let Paystack → backend → receipt handle navigation
+      window.location.assign('/vote');
     }
   }, [cart?.status]);
+
+  // ✅ NOW SAFE TO GUARD
 
   if (!cart && loadingInit) {
     return <div className="p-6">Loading cart...</div>;
@@ -112,8 +118,10 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
   const c = cart;
 
+  // 👉 continue rest of your file unchanged
   function syncCart(data: CartResponse) {
     const items = data.items ?? [];
+
     setCart({ ...data, items });
 
     localStorage.setItem('cartCount', String(items.length));
@@ -240,7 +248,110 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
   return (
     <div className="space-y-6">
-      {/* UI unchanged */}
+
+      {grouped.length > 1 && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          You are voting across multiple polls. All selections will be paid together.
+        </div>
+      )}
+
+      {err && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {err}
+        </div>
+      )}
+
+      {!hasItems && (
+        <div className="text-center text-gray-500 py-10">
+          Your cart is empty
+        </div>
+      )}
+
+      {hasItems && grouped.map(([pollId, items]) => (
+        <div key={pollId} className="space-y-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            🗳️ {items[0].electionTitle || `Poll ${pollId}`}
+          </h2>
+
+          {items.map((i) => {
+            const key = `${i.electionId}:${i.candidateId}`;
+            const busy = busyKey === key;
+            const name = i.candidateName || `Nominee ${i.candidateId}`;
+
+            return (
+              <div key={key} className="rounded-2xl border bg-white p-4 shadow-sm flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1">
+                  {i.photoUrl ? (
+                    <img src={i.photoUrl} className="w-12 h-12 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center font-semibold text-gray-600">
+                      {name[0]}
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="font-semibold text-gray-900">{name}</div>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <button onClick={() => updateQty(i, i.voteQty - 1)} disabled={busy || i.voteQty <= 1} className="w-8 h-8 rounded-lg border">−</button>
+
+                      <input
+                        type="number"
+                        min={1}
+                        value={i.voteQty}
+                        onChange={(e) => {
+                          const num = Number(e.target.value);
+                          if (!Number.isNaN(num) && num >= 1) {
+                            updateQty(i, num);
+                          }
+                        }}
+                        disabled={busy}
+                        className="w-14 h-8 rounded-lg border text-center text-sm"
+                      />
+
+                      <button onClick={() => updateQty(i, i.voteQty + 1)} disabled={busy} className="w-8 h-8 rounded-lg bg-black text-white">+</button>
+
+                      <button onClick={() => removeItem(i)} disabled={busy} className="text-xs text-red-600 ml-2">Remove</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="font-semibold">{money(i.subTotal)}</div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+
+      <div className="rounded-2xl border bg-white p-4 shadow-sm flex justify-between">
+        <span>Total</span>
+        <span className="text-lg font-semibold">{money(c.totalAmount)}</span>
+      </div>
+
+      <button
+        onClick={clearCart}
+        disabled={clearing || !hasItems}
+        className="w-full rounded-xl border border-red-300 text-red-600 py-3 font-semibold"
+      >
+        {clearing ? 'Clearing...' : 'Clear Cart'}
+      </button>
+
+      <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-3">
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="w-full rounded-xl border px-4 py-3"
+        />
+
+        <button
+          onClick={pay}
+          disabled={!hasItems || loading || paidLike || clearing}
+          className="w-full rounded-xl bg-black text-white py-3 disabled:opacity-50"
+        >
+          {loading ? 'Loading...' : 'Pay with Paystack'}
+        </button>
+      </div>
     </div>
   );
 }
