@@ -8,7 +8,7 @@ import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
 
-import { AppModule } from './app.module.prod';
+import { AppModule } from './app.module';
 
 console.log('🚀 BOOTING APP...');
 
@@ -87,10 +87,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔥 FIXED: PAYSTACK RAW BODY (CORRECT ROUTE)
+  // 🔥 CRITICAL FIX: PAYSTACK RAW BODY (CORRECT ROUTE)
   // =====================================================
   app.use(
-    '/api/payments/webhook',
+    '/api/paystack/webhook',
     bodyParser.json({
       limit: '2mb',
       verify: (req: any, _res, buf) => {
@@ -107,8 +107,7 @@ async function bootstrap() {
   app.use((req: any, res: any, next: any) => {
     const url = (req.originalUrl || req.url || '').toString();
 
-    // ✅ FIXED ROUTE CHECK
-    if (url.startsWith('/api/payments/webhook')) return next();
+    if (url.startsWith('/api/paystack/webhook')) return next();
 
     const contentType = req.headers['content-type'] || '';
     if (contentType.includes('multipart/form-data')) return next();

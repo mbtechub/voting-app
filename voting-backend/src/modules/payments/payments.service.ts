@@ -88,7 +88,10 @@ export class PaymentsService {
         email: userEmail,
         amount: Math.round(Number(cart.totalAmount) * 100),
         reference: paystackRef,
+
+        // 🔥 FIXED: redirect goes to FRONTEND
         callback_url: `${process.env.FRONTEND_BASE_URL}/receipt/${paystackRef}`,
+
         currency: 'NGN',
       },
       {
@@ -197,7 +200,7 @@ export class PaymentsService {
   }
 
   // ===================================================
-  // FINALIZE PAYMENT (🔥 FINAL FIX)
+  // FINALIZE PAYMENT
   // ===================================================
   async markPaymentSuccess(ref: string, verifiedData: any) {
     await this.dataSource.transaction(async (manager) => {
@@ -222,13 +225,10 @@ export class PaymentsService {
       cart.status = 'PAID';
       await manager.save(cart);
 
-      // ✅ FINAL FIX (NO QUERY BUILDER)
-      const items = await manager.find(CartItem, {
-  where: {
-    cart: { cartId: cart.cartId },
-  },
-  relations: ['cart'],
-});
+      const items = await manager
+        .createQueryBuilder(CartItem, 'ci')
+        .where('ci.cartId = :cartId', { cartId: cart.cartId })
+        .getMany();
 
       for (const item of items) {
         await manager.query(
@@ -255,6 +255,7 @@ export class PaymentsService {
         );
       }
 
+      // receipt generation (safe)
       try {
         if ('getReceiptByReference' in this.receiptsService) {
           await (this.receiptsService as any).getReceiptByReference(ref);
