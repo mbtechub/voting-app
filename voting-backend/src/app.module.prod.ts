@@ -11,9 +11,9 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PublicModule } from './modules/public/public.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
-// ❌ REMOVED PaystackModule (causing webhook conflict)
 import { ElectionManagementModule } from './modules/election-management/election-management.module';
 
+// 🔒 Strict env loader (DO NOT BREAK THIS PATTERN)
 function requireEnv(config: ConfigService, key: string): string {
   const v = (config.get<string>(key) || '').trim();
   if (!v) throw new Error(`Missing env: ${key}`);
@@ -22,6 +22,9 @@ function requireEnv(config: ConfigService, key: string): string {
 
 @Module({
   imports: [
+    // =====================================================
+    // 🌍 ENV CONFIG
+    // =====================================================
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath:
@@ -30,6 +33,9 @@ function requireEnv(config: ConfigService, key: string): string {
           : '.env.local',
     }),
 
+    // =====================================================
+    // 🛡️ RATE LIMITING
+    // =====================================================
     ThrottlerModule.forRoot([
       {
         ttl: 60,
@@ -37,7 +43,9 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     ]),
 
-    // 🔥 FINAL: ORACLE WALLET CONNECTION (STABLE)
+    // =====================================================
+    // 🔥 ORACLE DB (PRODUCTION-STABLE)
+    // =====================================================
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
@@ -49,22 +57,20 @@ function requireEnv(config: ConfigService, key: string): string {
           username: requireEnv(config, 'DB_USER'),
           password: requireEnv(config, 'DB_PASSWORD'),
 
-          // 🔥 MUST MATCH tnsnames.ora
+          // Must match wallet tnsnames.ora
           connectString: requireEnv(config, 'DB_CONNECT_STRING'),
 
           synchronize: false,
           autoLoadEntities: true,
           logging: false,
 
-          // 🔥 CRITICAL FOR RENDER STABILITY
+          // Render stability
           retryAttempts: 10,
           retryDelay: 3000,
           keepConnectionAlive: true,
 
-          // 🔥 WALLET CONFIG (REQUIRED)
           extra: {
             configDir: tnsAdmin,
-
             poolMin: 1,
             poolMax: 5,
             poolIncrement: 1,
@@ -74,9 +80,15 @@ function requireEnv(config: ConfigService, key: string): string {
       },
     }),
 
+    // =====================================================
+    // 🧩 FEATURE MODULES
+    // =====================================================
     AuthModule,
     CartModule,
-    PaymentsModule,        // ✅ THIS handles webhook correctly
+
+    // 🔥 SINGLE SOURCE OF TRUTH FOR WEBHOOKS
+    PaymentsModule,
+
     AdminModule,
     PublicModule,
     ReceiptsModule,

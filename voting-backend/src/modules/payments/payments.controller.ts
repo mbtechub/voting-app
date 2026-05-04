@@ -24,7 +24,6 @@ export class PaymentsController {
 
   // -------------------------------
   // Initiate Paystack payment
-  // Email is required so Paystack can send receipt/customer notifications
   // -------------------------------
   @Post('initiate')
   async initiatePaystack(@Body() body: { cartUuid: string; email: string }) {
@@ -44,8 +43,6 @@ export class PaymentsController {
 
   // -------------------------------
   // Browser callback (UX only)
-  // Paystack redirects here after payment.
-  // Webhook is still the ONLY vote authority.
   // -------------------------------
   @Get('callback')
   callback(
@@ -60,12 +57,10 @@ export class PaymentsController {
 
     const ref = (reference || trxref || '').trim();
 
-    // Safety fallback if we don't have any reference
     if (!ref) {
       return res?.redirect(302, `${frontendBase}/payment/processing`);
     }
 
-    // Redirect user to frontend receipt page
     return res?.redirect(
       302,
       `${frontendBase}/receipt/${encodeURIComponent(ref)}`,
@@ -73,49 +68,70 @@ export class PaymentsController {
   }
 
   // -------------------------------
-  // Paystack webhook (HARDENED)
-  // NOTE: We still always respond 200 quickly.
-  // Paystack will retry on non-2xx, so we only use 401/400 for truly invalid calls.
+  // Paystack webhook (DEBUG + HARDENED)
   // -------------------------------
-  @Post('webhook/paystack')
+  @Post('webhook/')
   @HttpCode(200)
   async paystackWebhook(
     @Req() req: any,
     @Res() res: Response,
     @Headers('x-paystack-signature') signature?: string,
   ) {
-    // 1) Signature must exist
-    if (!signature) {
-      throw new UnauthorizedException('Missing x-paystack-signature');
+    console.log('🔥🔥 PAYSTACK WEBHOOK HIT');
+
+    try {
+      console.log('➡️ Headers:', req.headers);
+      console.log('➡️ Body:', req.body);
+
+      // 1) Signature must exist
+      if (!signature) {
+        console.log('❌ Missing signature');
+        throw new UnauthorizedException('Missing x-paystack-signature');
+      }
+
+      // 2) Raw body must exist
+      if (!req?.rawBody) {
+        console.log('❌ Missing rawBody');
+        throw new BadRequestException('Missing rawBody for webhook verification');
+      }
+
+      // 3) Body must exist
+      if (!req?.body) {
+        console.log('❌ Missing body');
+        throw new BadRequestException('Missing webhook body');
+      }
+
+      const event = (req.body?.event || '').toString();
+      console.log('➡️ Event:', event);
+
+      // Ignore non-payment events safely
+      if (event && event !== 'charge.success') {
+        console.log('⚠️ Ignored event:', event);
+        return res.status(200).json({ received: true, ignored: true, event });
+      }
+
+      await this.paymentsService.handlePaystackWebhook({
+        rawBody: req.rawBody,
+        body: req.body,
+        signature,
+      });
+
+      console.log('✅ Webhook processed successfully');
+
+      return res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error('🔥 WEBHOOK ERROR:', err?.message);
+
+      // Always return 200 so Paystack doesn’t spam retries
+      return res.status(200).json({
+        received: true,
+        error: err?.message || 'Unknown error',
+      });
     }
-
-    // 2) Raw body must exist (your middleware must have run)
-    if (!req?.rawBody) {
-      throw new BadRequestException('Missing rawBody for webhook verification');
-    }
-
-    // 3) Body must be JSON
-    if (!req?.body) {
-      throw new BadRequestException('Missing webhook body');
-    }
-
-    // 4) Optional: only accept charge.success (ignore others)
-    const event = (req.body?.event || '').toString();
-    if (event && event !== 'charge.success') {
-      return res.status(200).json({ received: true, ignored: true, event });
-    }
-
-    await this.paymentsService.handlePaystackWebhook({
-      rawBody: req.rawBody,
-      body: req.body,
-      signature,
-    });
-
-    return res.status(200).json({ received: true });
   }
 
   // -------------------------------
-  // Admin recovery: re-run finalize by Paystack reference
+  // Admin recovery
   // -------------------------------
   @Post('recover')
   async recoverByReference(@Body() body: { paystackRef: string }) {
