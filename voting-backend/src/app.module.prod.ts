@@ -8,7 +8,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { CartModule } from './modules/cart/cart.module';
 import { PaymentsModule } from './modules/payments/payments.module';
-import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PublicModule } from './modules/public/public.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
@@ -78,7 +77,6 @@ function requireEnv(config: ConfigService, key: string): string {
     AuthModule,
     CartModule,
     PaymentsModule,        // ✅ THIS handles webhook correctly
-    WebhooksModule,
     AdminModule,
     PublicModule,
     ReceiptsModule,

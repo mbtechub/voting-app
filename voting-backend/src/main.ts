@@ -8,7 +8,7 @@ import * as bodyParser from 'body-parser';
 import { DataSource } from 'typeorm';
 import * as express from 'express';
 
-import { AppModule } from './app.module';
+import { AppModule } from './app.module.prod';
 
 console.log('🚀 BOOTING APP...');
 
