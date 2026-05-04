@@ -90,7 +90,7 @@ async function bootstrap() {
   // 🔥 CRITICAL FIX: PAYSTACK RAW BODY (CORRECT ROUTE)
   // =====================================================
   app.use(
-    '/api/paystack/webhook',
+    '/api/payments/webhook/paystack',
     bodyParser.json({
       limit: '2mb',
       verify: (req: any, _res, buf) => {
