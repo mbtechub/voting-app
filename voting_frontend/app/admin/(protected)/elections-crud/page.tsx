@@ -1,6 +1,5 @@
 import React from 'react';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,29 +17,15 @@ async function fetchElections(searchParams: {
   status?: string;
   q?: string;
 }): Promise<Row[]> {
-  const cookieStore = await cookies();
-
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_BASE_URL is not defined');
-  }
-
   const qs = new URLSearchParams();
   if (searchParams.status) qs.set('status', searchParams.status);
   if (searchParams.q) qs.set('q', searchParams.q);
 
-  const res = await fetch(
-    `${baseUrl}/api/admin/elections?${qs.toString()}`, // ✅ ABSOLUTE + PROXY
-    {
-      method: 'GET',
-      cache: 'no-store',
-      headers: {
-        Cookie: cookieStore.toString(), // ✅ REQUIRED FOR AUTH
-        Accept: 'application/json',
-      },
-    },
-  );
+  // ✅ USE INTERNAL NEXT API (PROXY HANDLES AUTH)
+  const res = await fetch(`/api/admin/elections?${qs.toString()}`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
 
   if (!res.ok) {
     const text = await res.text();
