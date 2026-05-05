@@ -22,12 +22,14 @@ async function fetchElections(searchParams: {
   if (searchParams.status) qs.set('status', searchParams.status);
   if (searchParams.q) qs.set('q', searchParams.q);
 
+  // ✅ REQUIRED: absolute URL (works on Vercel)
   const h = await headers();
   const origin =
     h.get('x-forwarded-proto') && h.get('x-forwarded-host')
       ? `${h.get('x-forwarded-proto')}://${h.get('x-forwarded-host')}`
       : h.get('origin') || '';
 
+  // ✅ forward cookies (admin auth)
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
 
@@ -73,12 +75,12 @@ function formatPrice(value: number | null) {
 function getStatusBadgeClass(status: string) {
   const s = String(status || '').toUpperCase();
 
-  if (s === 'ACTIVE') return 'bg-green-100 text-green-700';
-  if (s === 'DRAFT') return 'bg-slate-100 text-slate-700';
-  if (s === 'ENDED') return 'bg-amber-100 text-amber-700';
-  if (s === 'DISABLED') return 'bg-red-100 text-red-700';
+  if (s === 'ACTIVE') return 'border-green-200 bg-green-100 text-green-700';
+  if (s === 'DRAFT') return 'border-slate-200 bg-slate-100 text-slate-700';
+  if (s === 'ENDED') return 'border-amber-200 bg-amber-100 text-amber-700';
+  if (s === 'DISABLED') return 'border-red-200 bg-red-100 text-red-700';
 
-  return 'bg-gray-100 text-gray-700';
+  return 'border-gray-200 bg-gray-100 text-gray-700';
 }
 
 export default async function ElectionsCrudPage({
@@ -98,31 +100,31 @@ export default async function ElectionsCrudPage({
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
       <div className="rounded-[2rem] bg-gradient-to-br from-blue-950 via-slate-900 to-blue-800 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm backdrop-blur">
+            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur">
               Poll Management
             </div>
 
             <h1 className="mt-4 text-3xl font-bold">Manage Polls</h1>
-
-            <p className="mt-2 text-sm text-blue-100">
-              Create, update, disable polls, and manage nominees.
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base">
+              Create, update, disable polls, and manage nominees with a clean
+              administrative workflow.
             </p>
           </div>
 
-          <Link
-            href="/admin/elections-crud/new"
-            className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100"
-          >
-            + New Poll
-          </Link>
+          <div>
+            <Link
+              href="/admin/elections-crud/new"
+              className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+            >
+              New Poll
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* FILTER */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <form
           className="flex flex-col gap-3 lg:flex-row lg:items-end"
@@ -130,27 +132,27 @@ export default async function ElectionsCrudPage({
           method="get"
         >
           <div className="w-full lg:max-w-sm">
-            <label className="text-sm font-medium text-slate-800">
+            <label className="block text-sm font-medium text-slate-800">
               Search Title
             </label>
             <input
               name="q"
               defaultValue={params.q || ''}
               placeholder="Search title..."
-              className="mt-2 w-full rounded-2xl border px-4 py-3 text-sm focus:ring-2 focus:ring-blue-100"
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             />
           </div>
 
           <div className="w-full lg:max-w-xs">
-            <label className="text-sm font-medium text-slate-800">
+            <label className="block text-sm font-medium text-slate-800">
               Status
             </label>
             <select
               name="status"
               defaultValue={params.status || ''}
-              className="mt-2 w-full rounded-2xl border px-4 py-3 text-sm"
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             >
-              <option value="">All</option>
+              <option value="">All statuses</option>
               <option value="DRAFT">DRAFT</option>
               <option value="ACTIVE">ACTIVE</option>
               <option value="ENDED">ENDED</option>
@@ -158,14 +160,17 @@ export default async function ElectionsCrudPage({
             </select>
           </div>
 
-          <div className="flex gap-2">
-            <button className="rounded-2xl bg-blue-600 px-5 py-3 text-sm text-white">
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
               Filter
             </button>
 
             <Link
               href="/admin/elections-crud"
-              className="rounded-2xl border px-5 py-3 text-sm"
+              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Reset
             </Link>
@@ -173,76 +178,71 @@ export default async function ElectionsCrudPage({
         </form>
       </div>
 
-      {/* MODERN LIST (REPLACES TABLE) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="space-y-3">
-          {rows.length ? (
-            rows.map((r) => (
-              <div
-                key={r.electionId}
-                className="group flex items-center justify-between rounded-2xl border border-slate-100 p-4 transition hover:shadow-md"
-              >
-                {/* LEFT */}
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-600">
-                    {r.title?.charAt(0)}
-                  </div>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                  Title
+                </th>
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                  Status
+                </th>
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                  Start
+                </th>
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                  End
+                </th>
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                  Default Price
+                </th>
+                <th className="border-b px-4 py-3 text-right text-sm font-semibold">
+                  Action
+                </th>
+              </tr>
+            </thead>
 
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {r.title}
-                    </p>
-
-                    <span
-                      className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${getStatusBadgeClass(
-                        r.status,
-                      )}`}
-                    >
-                      {r.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* CENTER */}
-                <div className="hidden md:flex items-center gap-10 text-sm">
-                  <div>
-                    <p className="text-xs text-slate-500">Price</p>
-                    <p className="font-semibold">
+            <tbody>
+              {rows.length ? (
+                rows.map((r) => (
+                  <tr key={r.electionId}>
+                    <td className="border-b px-4 py-4">{r.title}</td>
+                    <td className="border-b px-4 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-1 text-xs ${getStatusBadgeClass(
+                          r.status,
+                        )}`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="border-b px-4 py-4">
+                      {formatDate(r.startDate)}
+                    </td>
+                    <td className="border-b px-4 py-4">
+                      {formatDate(r.endDate)}
+                    </td>
+                    <td className="border-b px-4 py-4">
                       {formatPrice(r.defaultVotePrice)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-slate-500">Start</p>
-                    <p>{formatDate(r.startDate)}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-slate-500">End</p>
-                    <p>{formatDate(r.endDate)}</p>
-                  </div>
-                </div>
-
-                {/* ACTIONS */}
-                <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100">
-                  <Link
-                    href={`/admin/elections-crud/${r.electionId}`}
-                    className="rounded-xl border px-3 py-1.5 text-xs hover:bg-slate-50"
-                  >
-                    Edit
-                  </Link>
-
-                  <button className="rounded-xl border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50">
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="py-10 text-center text-sm text-slate-500">
-              No polls found
-            </div>
-          )}
+                    </td>
+                    <td className="border-b px-4 py-4 text-right">
+                      <Link href={`/admin/elections-crud/${r.electionId}`}>
+                        Manage
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-sm text-slate-500">
+                    No polls found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
