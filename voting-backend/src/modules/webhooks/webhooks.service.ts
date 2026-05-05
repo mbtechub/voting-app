@@ -512,7 +512,7 @@ export class WebhooksService {
       }
 
       
-
+     const detailRows = [];
       const snapshotItems = (detailRows || []).map((r: any) => ({
         cartItemId: r.cartItemId ?? null,
         poll: {
