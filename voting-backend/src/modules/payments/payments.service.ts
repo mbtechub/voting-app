@@ -264,14 +264,20 @@ export class PaymentsService {
         ],
       );
 
-      await manager.query(
-        `
-        INSERT INTO VOTE_LOGS
-        (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, APPLY_STATUS)
-        VALUES (:1, :2, :3, :4, 'APPLIED')
-        `,
-        [ref, item.electionId, item.candidateId, item.voteQty],
-      );
+     await manager.query(
+  `
+  INSERT INTO VOTE_LOGS
+  (REFERENCE, CART_ID, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, APPLY_STATUS)
+  VALUES (:1, :2, :3, :4, :5, 'APPLIED')
+  `,
+  [
+    ref,
+    cart.cartId,        // ✅ THIS WAS MISSING
+    item.electionId,
+    item.candidateId,
+    item.voteQty
+  ],
+);
     }
 
     // receipt generation
