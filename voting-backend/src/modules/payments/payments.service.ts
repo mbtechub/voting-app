@@ -203,68 +203,77 @@ export class PaymentsService {
   // FINALIZE PAYMENT
   // ===================================================
   async markPaymentSuccess(ref: string, verifiedData: any) {
-    await this.dataSource.transaction(async (manager) => {
-      const payment = await manager.findOne(Payment, {
-        where: { paystackRef: ref },
-      });
-
-      if (!payment) return;
-      if (payment.status === 'SUCCESS') return;
-
-      payment.status = 'SUCCESS';
-      payment.paidAt = new Date();
-      payment.rawResponse = JSON.stringify(verifiedData);
-      await manager.save(payment);
-
-      const cart = await manager.findOne(Cart, {
-        where: { cartId: payment.cartId },
-      });
-
-      if (!cart) return;
-
-      cart.status = 'PAID';
-      await manager.save(cart);
-
-      const items = await manager
-        .createQueryBuilder(CartItem, 'ci')
-        .where('ci.CART_ID = :cartId', { cartId: cart.cartId })
-        .getMany();
-
-      for (const item of items) {
-        await manager.query(
-          `
-          MERGE INTO ELECTION_RESULTS r
-          USING dual
-          ON (r.election_id = :1 AND r.candidate_id = :2)
-          WHEN MATCHED THEN
-            UPDATE SET vote_count = r.vote_count + :3
-          WHEN NOT MATCHED THEN
-            INSERT (election_id, candidate_id, vote_count)
-            VALUES (:1, :2, :3)
-          `,
-          [item.electionId, item.candidateId, item.voteQty],
-        );
-
-        await manager.query(
-          `
-          INSERT INTO VOTE_LOGS
-          (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, STATUS)
-          VALUES (:1, :2, :3, :4, 'APPLIED')
-          `,
-          [ref, item.electionId, item.candidateId, item.voteQty],
-        );
-      }
-
-      // receipt generation (safe)
-      try {
-        if ('getReceiptByReference' in this.receiptsService) {
-          await (this.receiptsService as any).getReceiptByReference(ref);
-        }
-      } catch (err: any) {
-        console.warn('Receipt generation failed:', err?.message);
-      }
+  await this.dataSource.transaction(async (manager) => {
+    const payment = await manager.findOne(Payment, {
+      where: { paystackRef: ref },
     });
-  }
+
+    if (!payment) return;
+    if (payment.status === 'SUCCESS') return;
+
+    payment.status = 'SUCCESS';
+    payment.paidAt = new Date();
+    payment.rawResponse = JSON.stringify(verifiedData);
+    await manager.save(payment);
+
+    const cart = await manager.findOne(Cart, {
+      where: { cartId: payment.cartId },
+    });
+
+    if (!cart) return;
+
+    cart.status = 'PAID';
+    await manager.save(cart);
+
+    // 🔥 FIXED: Oracle-safe fetch
+    const items = await manager.query(
+      `
+      SELECT
+        ci.CART_ITEM_ID   AS "cartItemId",
+        ci.ELECTION_ID    AS "electionId",
+        ci.CANDIDATE_ID   AS "candidateId",
+        ci.VOTE_QTY       AS "voteQty"
+      FROM CART_ITEMS ci
+      WHERE ci.CART_ID = :1
+      `,
+      [cart.cartId],
+    );
+
+    console.log('ITEMS FOUND:', items);
+
+    for (const item of items) {
+      await manager.query(
+        `
+        MERGE INTO ELECTION_RESULTS r
+        USING dual
+        ON (r.election_id = :1 AND r.candidate_id = :2)
+        WHEN MATCHED THEN
+          UPDATE SET vote_count = r.vote_count + :3
+        WHEN NOT MATCHED THEN
+          INSERT (election_id, candidate_id, vote_count)
+          VALUES (:1, :2, :3)
+        `,
+        [item.electionId, item.candidateId, item.voteQty],
+      );
+
+      await manager.query(
+        `
+        INSERT INTO VOTE_LOGS
+        (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, STATUS)
+        VALUES (:1, :2, :3, :4, 'APPLIED')
+        `,
+        [ref, item.electionId, item.candidateId, item.voteQty],
+      );
+    }
+
+    // receipt generation
+    try {
+      await (this.receiptsService as any).getReceiptByReference(ref);
+    } catch (err: any) {
+      console.warn('Receipt generation failed:', err?.message);
+    }
+  });
+}
 
   async recoverPaymentByReference(ref: string) {
     const verify = await this.verifyPaystackTransaction(ref);
