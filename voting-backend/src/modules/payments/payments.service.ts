@@ -227,7 +227,7 @@ export class PaymentsService {
 
       const items = await manager
         .createQueryBuilder(CartItem, 'ci')
-        .where('ci.cartId = :cartId', { cartId: cart.cartId })
+        .where('ci.CART_ID = :cartId', { cartId: cart.cartId })
         .getMany();
 
       for (const item of items) {

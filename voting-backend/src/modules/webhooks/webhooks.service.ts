@@ -511,35 +511,7 @@ export class WebhooksService {
         }
       }
 
-      // ✅ Snapshot rows: Poll title + Nominee name + outcomes
-      const detailRows = await manager.query(
-        `
-        SELECT
-          ci.cart_item_id   AS "cartItemId",
-          ci.election_id    AS "electionId",
-          e.title           AS "electionTitle",
-          ci.candidate_id   AS "candidateId",
-          c.name            AS "candidateName",
-          ci.vote_qty       AS "voteQty",
-          ci.price_per_vote AS "pricePerVote",
-          ci.sub_total      AS "subTotal",
-          vl.apply_status   AS "applyStatus",
-          vl.skip_reason    AS "skipReason",
-          vl.created_at     AS "createdAt"
-        FROM cart_items ci
-        JOIN elections e
-          ON e.election_id = ci.election_id
-        JOIN candidates c
-          ON c.candidate_id = ci.candidate_id
-         AND c.election_id  = ci.election_id
-        LEFT JOIN vote_logs vl
-          ON vl.reference    = :1
-         AND vl.cart_item_id = ci.cart_item_id
-        WHERE ci.cart_id = :2
-        ORDER BY ci.cart_item_id ASC
-        `,
-        [paystackRef, (cart as any).cartId],
-      );
+      
 
       const snapshotItems = (detailRows || []).map((r: any) => ({
         cartItemId: r.cartItemId ?? null,
