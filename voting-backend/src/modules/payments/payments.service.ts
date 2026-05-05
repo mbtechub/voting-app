@@ -263,11 +263,11 @@ export class PaymentsService {
           item.voteQty      // :6
         ],
       );
-      
+
       await manager.query(
         `
         INSERT INTO VOTE_LOGS
-        (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, STATUS)
+        (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, APPLY_STATUS)
         VALUES (:1, :2, :3, :4, 'APPLIED')
         `,
         [ref, item.electionId, item.candidateId, item.voteQty],
