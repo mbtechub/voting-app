@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { cookies, headers } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,11 +22,27 @@ async function fetchElections(searchParams: {
   if (searchParams.status) qs.set('status', searchParams.status);
   if (searchParams.q) qs.set('q', searchParams.q);
 
-  // ✅ USE INTERNAL NEXT API (PROXY HANDLES AUTH)
-  const res = await fetch(`/api/admin/elections?${qs.toString()}`, {
-    method: 'GET',
-    cache: 'no-store',
-  });
+  // ✅ REQUIRED: absolute URL (works on Vercel)
+  const h = await headers();
+  const origin =
+    h.get('x-forwarded-proto') && h.get('x-forwarded-host')
+      ? `${h.get('x-forwarded-proto')}://${h.get('x-forwarded-host')}`
+      : h.get('origin') || '';
+
+  // ✅ forward cookies (admin auth)
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+
+  const res = await fetch(
+    `${origin}/api/admin/elections?${qs.toString()}`,
+    {
+      method: 'GET',
+      headers: {
+        Cookie: cookieHeader,
+      },
+      cache: 'no-store',
+    },
+  );
 
   if (!res.ok) {
     const text = await res.text();
@@ -58,18 +75,10 @@ function formatPrice(value: number | null) {
 function getStatusBadgeClass(status: string) {
   const s = String(status || '').toUpperCase();
 
-  if (s === 'ACTIVE') {
-    return 'border-green-200 bg-green-100 text-green-700';
-  }
-  if (s === 'DRAFT') {
-    return 'border-slate-200 bg-slate-100 text-slate-700';
-  }
-  if (s === 'ENDED') {
-    return 'border-amber-200 bg-amber-100 text-amber-700';
-  }
-  if (s === 'DISABLED') {
-    return 'border-red-200 bg-red-100 text-red-700';
-  }
+  if (s === 'ACTIVE') return 'border-green-200 bg-green-100 text-green-700';
+  if (s === 'DRAFT') return 'border-slate-200 bg-slate-100 text-slate-700';
+  if (s === 'ENDED') return 'border-amber-200 bg-amber-100 text-amber-700';
+  if (s === 'DISABLED') return 'border-red-200 bg-red-100 text-red-700';
 
   return 'border-gray-200 bg-gray-100 text-gray-700';
 }
@@ -81,7 +90,13 @@ export default async function ElectionsCrudPage({
 }) {
   const params = await searchParams;
 
-  const rows = await fetchElections(params);
+  let rows: Row[] = [];
+
+  try {
+    rows = await fetchElections(params);
+  } catch (err) {
+    console.error('Elections fetch failed:', err);
+  }
 
   return (
     <div className="space-y-6">
@@ -168,22 +183,22 @@ export default async function ElectionsCrudPage({
           <table className="w-full border-collapse">
             <thead className="bg-slate-50">
               <tr>
-                <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
                   Title
                 </th>
-                <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
                   Status
                 </th>
-                <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
                   Start
                 </th>
-                <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
                   End
                 </th>
-                <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
                   Default Price
                 </th>
-                <th className="border-b border-slate-200 px-4 py-3 text-right text-sm font-semibold text-slate-700">
+                <th className="border-b px-4 py-3 text-right text-sm font-semibold">
                   Action
                 </th>
               </tr>
@@ -193,32 +208,27 @@ export default async function ElectionsCrudPage({
               {rows.length ? (
                 rows.map((r) => (
                   <tr key={r.electionId}>
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm font-semibold text-slate-900">
-                      {r.title}
-                    </td>
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
+                    <td className="border-b px-4 py-4">{r.title}</td>
+                    <td className="border-b px-4 py-4">
                       <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
+                        className={`inline-flex rounded-full border px-2 py-1 text-xs ${getStatusBadgeClass(
                           r.status,
                         )}`}
                       >
                         {r.status}
                       </span>
                     </td>
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
+                    <td className="border-b px-4 py-4">
                       {formatDate(r.startDate)}
                     </td>
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
+                    <td className="border-b px-4 py-4">
                       {formatDate(r.endDate)}
                     </td>
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
+                    <td className="border-b px-4 py-4">
                       {formatPrice(r.defaultVotePrice)}
                     </td>
-                    <td className="border-b border-slate-100 px-4 py-4 text-right text-sm">
-                      <Link
-                        href={`/admin/elections-crud/${r.electionId}`}
-                        className="font-semibold text-blue-700 transition hover:text-blue-800 hover:underline"
-                      >
+                    <td className="border-b px-4 py-4 text-right">
+                      <Link href={`/admin/elections-crud/${r.electionId}`}>
                         Manage
                       </Link>
                     </td>
@@ -226,7 +236,7 @@ export default async function ElectionsCrudPage({
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-6 text-sm text-slate-500" colSpan={6}>
+                  <td colSpan={6} className="px-4 py-6 text-sm text-slate-500">
                     No polls found.
                   </td>
                 </tr>
