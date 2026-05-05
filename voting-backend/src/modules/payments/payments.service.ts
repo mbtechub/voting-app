@@ -225,7 +225,7 @@ export class PaymentsService {
     cart.status = 'PAID';
     await manager.save(cart);
 
-    // 🔥 FIXED: Oracle-safe fetch
+    // 🔥 Oracle-safe fetch (already correct)
     const items = await manager.query(
       `
       SELECT
@@ -242,6 +242,7 @@ export class PaymentsService {
     console.log('ITEMS FOUND:', items);
 
     for (const item of items) {
+      // ✅ FIXED MERGE (correct bind placeholders)
       await manager.query(
         `
         MERGE INTO ELECTION_RESULTS r
@@ -251,11 +252,18 @@ export class PaymentsService {
           UPDATE SET vote_count = r.vote_count + :3
         WHEN NOT MATCHED THEN
           INSERT (election_id, candidate_id, vote_count)
-          VALUES (:1, :2, :3)
+          VALUES (:4, :5, :6)
         `,
-        [item.electionId, item.candidateId, item.voteQty],
+        [
+          item.electionId,  // :1
+          item.candidateId, // :2
+          item.voteQty,     // :3
+          item.electionId,  // :4
+          item.candidateId, // :5
+          item.voteQty      // :6
+        ],
       );
-
+      
       await manager.query(
         `
         INSERT INTO VOTE_LOGS
