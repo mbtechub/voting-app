@@ -11,7 +11,7 @@ export default function PublicFooter() {
         <div>
           <h3 className="text-lg font-bold tracking-tight">Voting</h3>
           <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-            A secure digital polling platform for participating in elections,
+            A secure digital polling platform for participating in polls,
             casting votes, and verifying receipts with confidence.
           </p>
         </div>
@@ -23,12 +23,12 @@ export default function PublicFooter() {
           </h4>
           <ul className="space-y-2 text-sm text-slate-400">
             <li>
-              <Link href="/vote" className="hover:text-white transition">
+              <Link href="/" className="hover:text-white transition">
                 Home
               </Link>
             </li>
             <li>
-              <Link href="/elections" className="hover:text-white transition">
+              <Link href="/vote" className="hover:text-white transition">
                 Polls
               </Link>
             </li>
@@ -83,7 +83,7 @@ export default function PublicFooter() {
 
       {/* Bottom */}
       <div className="border-t border-slate-800 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
-        © {new Date().getFullYear()} Voting Platform. All rights reserved.
+        © {new Date().getFullYear()} Mide Bash. All rights reserved.
       </div>
     </footer>
   );

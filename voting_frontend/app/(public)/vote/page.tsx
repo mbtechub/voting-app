@@ -40,7 +40,7 @@ export default async function VoteHomePage() {
       {/* HEADER */}
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-          Active Elections
+          POLLS
         </h1>
         <p className="text-sm text-gray-500">
           Select a poll to view nominees and add votes to your cart.

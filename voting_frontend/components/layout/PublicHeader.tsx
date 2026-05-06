@@ -29,13 +29,13 @@ export default function PublicHeader() {
               className="h-8 w-8 object-contain rounded-md"
             />
           ) : (
-            // fallback (your old VP)
+            // fallback (old VP)
             <span className="bg-blue-600 text-white px-2 py-1 rounded-lg">
               VP
             </span>
           )}
 
-          <span>Voting</span>
+          <span>Voting App</span>
         </Link>
 
         {/* Desktop Menu */}
@@ -44,7 +44,7 @@ export default function PublicHeader() {
             Home
           </Link>
 
-          <Link href="/elections" className="hover:text-black">
+          <Link href="/vote" className="hover:text-black">
             Polls
           </Link>
 
@@ -78,11 +78,11 @@ export default function PublicHeader() {
       {/* Mobile Menu */}
       {open && (
         <div className="md:hidden border-t border-slate-200 px-4 pb-4 pt-3 flex flex-col gap-3 text-sm font-medium text-slate-700">
-          <Link href="/vote" onClick={closeMenu}>
+          <Link href="/" onClick={closeMenu}>
             Home
           </Link>
 
-          <Link href="/elections" onClick={closeMenu}>
+          <Link href="/vote" onClick={closeMenu}>
             Polls
           </Link>
 
