@@ -119,7 +119,7 @@ const [editSelectedFileName, setEditSelectedFileName] = useState('');
   });
 
   const statusOptions = useMemo(
-    () => ['DRAFT', 'ACTIVE', 'ENDED', 'DISABLED'],
+    () => ['DRAFT', 'ACTIVE', 'ENDED',],
     [],
   );
 

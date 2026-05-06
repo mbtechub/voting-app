@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* FORCE LIGHT MODE — NO SYSTEM OVERRIDE */
+/* ============================= */
+/* FORCE LIGHT MODE (GLOBAL) */
+/* ============================= */
 :root {
   color-scheme: light;
 
@@ -8,15 +10,21 @@
   --foreground: #171717;
 }
 
-/* ❌ REMOVE ANY media queries completely */
-/* NO prefers-color-scheme anywhere */
-
-html {
-  background: #ffffff;
+/* ============================= */
+/* BASE STYLES */
+/* ============================= */
+html,
+body {
+  height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ============================= */
+/* SMOOTH TEXT RENDERING */
+/* ============================= */
 body {
-  background: #ffffff;
-  color: #171717;
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

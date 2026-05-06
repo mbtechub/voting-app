@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
+import Preloader from '@/components/ui/Preloader';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -23,21 +24,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
         className={[
           geistSans.variable,
           geistMono.variable,
-          'min-h-screen bg-slate-50 text-slate-900 antialiased',
-          'font-sans',
+          'min-h-screen bg-slate-50 text-slate-900 antialiased font-sans',
         ].join(' ')}
       >
+        {/* ✅ PRELOADER (GLOBAL) */}
+        <Preloader />
+
         <div className="relative flex min-h-screen flex-col overflow-x-hidden">
+          {/* Background decoration */}
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.08),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.08),_transparent_30%)]" />
+
           {children}
         </div>
       </body>
