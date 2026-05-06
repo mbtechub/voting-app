@@ -414,38 +414,47 @@ export default function AdminPaymentsPage() {
                     </div>
                   </section>
 
-                  <section className="space-y-3">
-                    <h3 className="text-base font-semibold text-slate-900">
-                      Receipt
-                    </h3>
+                  
+                    <section className="space-y-3">
+  <h3 className="text-base font-semibold text-slate-900">
+    Receipt
+  </h3>
 
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                      {receipt ? (
-                        <div className="space-y-2">
-                          <p>
-                            <span className="font-medium text-slate-900">
-                              Reference:
-                            </span>{' '}
-                            {receipt.reference}
-                          </p>
-                          <p>
-                            <span className="font-medium text-slate-900">
-                              Snapshot Hash:
-                            </span>{' '}
-                            {receipt.snapshotHash || '-'}
-                          </p>
-                          <p>
-                            <span className="font-medium text-slate-900">
-                              PDF Hash:
-                            </span>{' '}
-                            {receipt.pdfHash || '-'}
-                          </p>
-                        </div>
-                      ) : (
-                        <p>No receipt found</p>
-                      )}
-                    </div>
-                  </section>
+  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+    {receipt ? (
+      <div className="space-y-3">
+
+        <div className="grid gap-1 sm:grid-cols-3 sm:items-start">
+          <span className="font-medium text-slate-900">Reference:</span>
+          <span className="sm:col-span-2 break-all">
+            {receipt.reference}
+          </span>
+        </div>
+
+        <div className="grid gap-1 sm:grid-cols-3 sm:items-start">
+          <span className="font-medium text-slate-900">
+            Snapshot Hash:
+          </span>
+          <span className="sm:col-span-2 break-all text-xs sm:text-sm">
+            {receipt.snapshotHash || '-'}
+          </span>
+        </div>
+
+        <div className="grid gap-1 sm:grid-cols-3 sm:items-start">
+          <span className="font-medium text-slate-900">
+            PDF Hash:
+          </span>
+          <span className="sm:col-span-2 break-all">
+            {receipt.pdfHash || '-'}
+          </span>
+        </div>
+
+      </div>
+    ) : (
+      <p className="text-slate-500">No receipt available</p>
+    )}
+  </div>
+</section>
                 </div>
               </div>
             );

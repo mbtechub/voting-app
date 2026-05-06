@@ -22,14 +22,12 @@ async function fetchElections(searchParams: {
   if (searchParams.status) qs.set('status', searchParams.status);
   if (searchParams.q) qs.set('q', searchParams.q);
 
-  // ✅ REQUIRED: absolute URL (works on Vercel)
   const h = await headers();
   const origin =
     h.get('x-forwarded-proto') && h.get('x-forwarded-host')
       ? `${h.get('x-forwarded-proto')}://${h.get('x-forwarded-host')}`
       : h.get('origin') || '';
 
-  // ✅ forward cookies (admin auth)
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
 
@@ -37,9 +35,7 @@ async function fetchElections(searchParams: {
     `${origin}/api/admin/elections?${qs.toString()}`,
     {
       method: 'GET',
-      headers: {
-        Cookie: cookieHeader,
-      },
+      headers: { Cookie: cookieHeader },
       cache: 'no-store',
     },
   );
@@ -75,12 +71,11 @@ function formatPrice(value: number | null) {
 function getStatusBadgeClass(status: string) {
   const s = String(status || '').toUpperCase();
 
-  if (s === 'ACTIVE') return 'border-green-200 bg-green-100 text-green-700';
-  if (s === 'DRAFT') return 'border-slate-200 bg-slate-100 text-slate-700';
-  if (s === 'ENDED') return 'border-amber-200 bg-amber-100 text-amber-700';
-  if (s === 'DISABLED') return 'border-red-200 bg-red-100 text-red-700';
+  if (s === 'ACTIVE') return 'bg-green-100 text-green-700';
+  if (s === 'DRAFT') return 'bg-slate-100 text-slate-700';
+  if (s === 'ENDED') return 'bg-amber-100 text-amber-700';
 
-  return 'border-gray-200 bg-gray-100 text-gray-700';
+  return 'bg-gray-100 text-gray-700';
 }
 
 export default async function ElectionsCrudPage({
@@ -100,77 +95,63 @@ export default async function ElectionsCrudPage({
 
   return (
     <div className="space-y-6">
+      {/* HEADER */}
       <div className="rounded-[2rem] bg-gradient-to-br from-blue-950 via-slate-900 to-blue-800 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur">
+            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm backdrop-blur">
               Poll Management
             </div>
 
             <h1 className="mt-4 text-3xl font-bold">Manage Polls</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base">
-              Create, update, disable polls, and manage nominees with a clean
-              administrative workflow.
+
+            <p className="mt-2 text-sm text-blue-100">
+              Create, update, manage polls with a clean workflow.
             </p>
           </div>
 
-          <div>
-            <Link
-              href="/admin/elections-crud/new"
-              className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-            >
-              New Poll
-            </Link>
-          </div>
+          <Link
+            href="/admin/elections-crud/new"
+            className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100"
+          >
+            + New Poll
+          </Link>
         </div>
       </div>
 
+      {/* FILTER */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <form
           className="flex flex-col gap-3 lg:flex-row lg:items-end"
           action="/admin/elections-crud"
           method="get"
         >
-          <div className="w-full lg:max-w-sm">
-            <label className="block text-sm font-medium text-slate-800">
-              Search Title
-            </label>
-            <input
-              name="q"
-              defaultValue={params.q || ''}
-              placeholder="Search title..."
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-          </div>
+          <input
+            name="q"
+            defaultValue={params.q || ''}
+            placeholder="Search title..."
+            className="w-full lg:max-w-sm rounded-2xl border px-4 py-3 text-sm focus:ring-2 focus:ring-blue-100"
+          />
 
-          <div className="w-full lg:max-w-xs">
-            <label className="block text-sm font-medium text-slate-800">
-              Status
-            </label>
-            <select
-              name="status"
-              defaultValue={params.status || ''}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            >
-              <option value="">All statuses</option>
-              <option value="DRAFT">DRAFT</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="ENDED">ENDED</option>
-              <option value="DISABLED">DISABLED</option>
-            </select>
-          </div>
+          <select
+            name="status"
+            defaultValue={params.status || ''}
+            className="w-full lg:max-w-xs rounded-2xl border px-4 py-3 text-sm"
+          >
+            <option value="">All</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="ENDED">ENDED</option>
+          </select>
 
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-            >
+          <div className="flex gap-2">
+            <button className="rounded-2xl bg-blue-600 px-5 py-3 text-sm text-white">
               Filter
             </button>
 
             <Link
               href="/admin/elections-crud"
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-2xl border px-5 py-3 text-sm"
             >
               Reset
             </Link>
@@ -178,28 +159,29 @@ export default async function ElectionsCrudPage({
         </form>
       </div>
 
+      {/* TABLE */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead className="bg-slate-50">
               <tr>
-                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   Title
                 </th>
-                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   Status
                 </th>
-                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   Start
                 </th>
-                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   End
                 </th>
-                <th className="border-b px-4 py-3 text-left text-sm font-semibold">
-                  Default Price
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Price
                 </th>
-                <th className="border-b px-4 py-3 text-right text-sm font-semibold">
-                  Action
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -207,36 +189,75 @@ export default async function ElectionsCrudPage({
             <tbody>
               {rows.length ? (
                 rows.map((r) => (
-                  <tr key={r.electionId}>
-                    <td className="border-b px-4 py-4">{r.title}</td>
-                    <td className="border-b px-4 py-4">
+                  <tr
+                    key={r.electionId}
+                    className="group transition hover:bg-slate-50/70"
+                  >
+                    {/* TITLE */}
+                    <td className="border-b border-slate-100 px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-semibold text-slate-600">
+                          {r.title?.charAt(0)}
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {r.title}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            Poll item
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* STATUS */}
+                    <td className="border-b border-slate-100 px-4 py-4">
                       <span
-                        className={`inline-flex rounded-full border px-2 py-1 text-xs ${getStatusBadgeClass(
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
                           r.status,
                         )}`}
                       >
                         {r.status}
                       </span>
                     </td>
-                    <td className="border-b px-4 py-4">
+
+                    {/* START */}
+                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
                       {formatDate(r.startDate)}
                     </td>
-                    <td className="border-b px-4 py-4">
+
+                    {/* END */}
+                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
                       {formatDate(r.endDate)}
                     </td>
-                    <td className="border-b px-4 py-4">
-                      {formatPrice(r.defaultVotePrice)}
+
+                    {/* PRICE */}
+                    <td className="border-b border-slate-100 px-4 py-4">
+                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                        {formatPrice(r.defaultVotePrice)}
+                      </span>
                     </td>
-                    <td className="border-b px-4 py-4 text-right">
-                      <Link href={`/admin/elections-crud/${r.electionId}`}>
-                        Manage
-                      </Link>
+
+                    {/* ACTIONS */}
+                    <td className="border-b border-slate-100 px-4 py-4 text-right">
+                      <div className="flex justify-end gap-2 opacity-0 transition duration-200 group-hover:opacity-100">
+                        <Link
+                          href={`/admin/elections-crud/${r.electionId}`}
+                          className="rounded-xl border px-3 py-1.5 text-xs hover:bg-slate-100"
+                        >
+                          Edit
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-sm text-slate-500">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-12 text-center text-sm text-slate-500"
+                  >
                     No polls found.
                   </td>
                 </tr>

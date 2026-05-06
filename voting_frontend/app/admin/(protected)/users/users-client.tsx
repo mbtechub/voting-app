@@ -328,75 +328,92 @@ export default function UsersClient() {
                 )}
               </tr>
             </thead>
+<tbody>
+  {rows.map((u) => (
+    <tr
+      key={u.adminId}
+      className="group transition hover:bg-slate-50/70"
+    >
+      {/* ID */}
+      <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-500">
+        #{u.adminId}
+      </td>
 
-            <tbody>
-              {rows.map((u) => (
-                <tr key={u.adminId}>
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    {u.adminId}
-                  </td>
+      {/* USERNAME */}
+      <td className="border-b border-slate-100 px-4 py-4">
+        <div className="text-sm font-semibold text-slate-900">
+          {u.username}
+        </div>
+      </td>
 
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm font-semibold text-slate-900">
-                    {u.username}
-                  </td>
+      {/* EMAIL */}
+      <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-600 break-all">
+        {u.email}
+      </td>
 
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    {u.email}
-                  </td>
+      {/* ROLE */}
+      <td className="border-b border-slate-100 px-4 py-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+          <select
+            value={String(u.roleId)}
+            onChange={(e) => changeRole(u, Number(e.target.value))}
+            className="w-full sm:w-auto rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+          >
+            <option value="1">SUPER ADMIN</option>
+            <option value="2">ADMIN</option>
+          </select>
 
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    <div className="flex items-center gap-3">
-                      <select
-                        value={String(u.roleId)}
-                        onChange={(e) => changeRole(u, Number(e.target.value))}
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                      >
-                        <option value="1">SUPER ADMIN</option>
-                        <option value="2">ADMIN</option>
-                      </select>
+          <span className="text-xs text-slate-500">
+            {roleLabel(u.roleId)}
+          </span>
+        </div>
+      </td>
 
-                      <span className="text-xs text-slate-500">
-                        {roleLabel(u.roleId)}
-                      </span>
-                    </div>
-                  </td>
+      {/* STATUS */}
+      <td className="border-b border-slate-100 px-4 py-4">
+        <span
+          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(
+            u.isActive,
+          )}`}
+        >
+          {u.isActive === 'Y' ? 'ACTIVE' : 'INACTIVE'}
+        </span>
+      </td>
 
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(
-                        u.isActive,
-                      )}`}
-                    >
-                      {u.isActive === 'Y' ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                  </td>
+      {/* ACTIONS */}
+      <td className="border-b border-slate-100 px-4 py-4">
+  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+    <button
+      onClick={() => toggleActive(u)}
+      className={`w-full sm:w-auto rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-[0.98] ${
+        u.isActive === 'Y'
+          ? 'border-red-200 text-red-600 hover:bg-red-50'
+          : 'border-green-200 text-green-600 hover:bg-green-50'
+      }`}
+    >
+      {u.isActive === 'Y' ? 'Deactivate' : 'Activate'}
+    </button>
 
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => toggleActive(u)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        {u.isActive === 'Y' ? 'Deactivate' : 'Activate'}
-                      </button>
-
-                      <button
-                        onClick={() => resetPassword(u)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        Reset Password
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {!loading && rows.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-sm text-slate-500">
-                    No users yet.
-                  </td>
-                </tr>
+    <button
+      onClick={() => resetPassword(u)}
+      className="w-full sm:w-auto rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-50 active:scale-[0.98]"
+    >
+      Reset Password
+    </button>
+  </div>
+</td>
+</tr>
+))}
+  {!loading && rows.length === 0 && (
+    <tr>
+      <td
+        colSpan={6}
+        className="px-4 py-10 text-center text-sm text-slate-500"
+      >
+        No users yet.
+      </td>
+    </tr>
+            
               )}
             </tbody>
           </table>

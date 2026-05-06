@@ -983,47 +983,64 @@ setMsg(file ? 'Nominee updated with image!' : 'Nominee updated');
                 )}
               </td>
 
-              <td className="border-b px-4 py-4">
-                {editingId === c.candidateId ? (
-                  <input
-                    value={editForm.votePrice}
-                    onChange={(e) =>
-                      setEditForm((p) => ({
-                        ...p,
-                        votePrice: e.target.value,
-                      }))
-                    }
-                    className="w-full border rounded px-3 py-2"
-                  />
-                ) : (
-                  formatMoney(c.votePrice)
-                )}
-              </td>
+              <td className="border-b border-slate-100 px-4 py-4">
+  {editingId === c.candidateId ? (
+    <input
+      value={editForm.votePrice}
+      onChange={(e) =>
+        setEditForm((p) => ({
+          ...p,
+          votePrice: e.target.value,
+        }))
+      }
+      className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+    />
+  ) : (
+    <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+      {formatMoney(c.votePrice)}
+    </span>
+  )}
+</td>
 
-              <td className="border-b px-4 py-4">
-                {String(c.createdAt).slice(0, 10)}
-              </td>
+<td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
+  {String(c.createdAt).slice(0, 10)}
+</td>
 
-              <td className="border-b px-4 py-4 text-right">
-                {editingId === c.candidateId ? (
-                  <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={() => onSaveEdit(c.candidateId)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded"
-                    >
-                      Save
-                    </button>
-                    <button onClick={cancelEdit}>Cancel</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2 justify-end">
-                    <button onClick={() => startEdit(c)}>Edit</button>
-                    <button onClick={() => onDeleteCandidate(c.candidateId)}>
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </td>
+<td className="border-b border-slate-100 px-4 py-4 text-right">
+  {editingId === c.candidateId ? (
+    <div className="flex gap-2 justify-end">
+      <button
+        onClick={() => onSaveEdit(c.candidateId)}
+        className="rounded-2xl bg-blue-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+      >
+        Save
+      </button>
+
+      <button
+        onClick={cancelEdit}
+        className="rounded-2xl border border-slate-200 px-5 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        Cancel
+      </button>
+    </div>
+  ) : (
+    <div className="flex gap-2 justify-end">
+      <button
+        onClick={() => startEdit(c)}
+        className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+      >
+        Edit
+      </button>
+
+      <button
+        onClick={() => onDeleteCandidate(c.candidateId)}
+        className="rounded-xl border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50"
+      >
+        Delete
+      </button>
+    </div>
+  )}
+</td>
             </tr>
           ))
         ) : (
