@@ -19,7 +19,6 @@ export default async function VoteHomePage() {
   try {
     const res = await publicFetch<any[]>('/api/public/elections');
 
-    // 🔥 SAFE NORMALIZATION (handles Oracle + inconsistent API)
     polls = (res || []).map((p): Poll => ({
       electionId: Number(p?.electionId ?? p?.election_id ?? 0),
       title: String(p?.title ?? ''),
@@ -40,18 +39,18 @@ export default async function VoteHomePage() {
     <div className="space-y-8">
       {/* HEADER */}
       <div className="space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
           Active Elections
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <p className="text-sm text-gray-500">
           Select a poll to view nominees and add votes to your cart.
         </p>
       </div>
 
       {/* ERROR */}
       {hasError && (
-        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
-          <p className="text-sm text-red-700 dark:text-red-400">
+        <Card className="border-red-200 bg-red-50">
+          <p className="text-sm text-red-700">
             Failed to load polls. Please refresh the page.
           </p>
         </Card>
@@ -59,8 +58,8 @@ export default async function VoteHomePage() {
 
       {/* EMPTY */}
       {!hasError && visible.length === 0 && (
-        <Card className="text-center py-8 dark:bg-slate-900">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <Card className="py-8 text-center">
+          <p className="text-sm text-gray-600">
             No active polls available right now.
           </p>
         </Card>
@@ -72,16 +71,16 @@ export default async function VoteHomePage() {
           {visible.map((p) => (
             <Card
               key={p.electionId}
-              className="flex flex-col justify-between rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-sm hover:shadow-md transition"
+              className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md"
             >
               {/* CONTENT */}
               <div>
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white leading-snug">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-snug">
                   {p.title}
                 </h2>
 
                 {p.description && (
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 line-clamp-3">
+                  <p className="mt-2 text-sm text-gray-500 line-clamp-3">
                     {p.description}
                   </p>
                 )}
@@ -90,7 +89,7 @@ export default async function VoteHomePage() {
               {/* CTA */}
               <div className="mt-5">
                 <Link href={`/vote/${p.electionId}`} className="block">
-                  <Button className="w-full rounded-xl bg-gray-900 text-white hover:bg-black transition active:scale-[0.98]">
+                  <Button className="w-full rounded-xl bg-gray-900 text-white transition hover:bg-black active:scale-[0.98]">
                     Vote Now
                   </Button>
                 </Link>
