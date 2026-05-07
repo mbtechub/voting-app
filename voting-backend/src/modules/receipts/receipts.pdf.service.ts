@@ -135,14 +135,16 @@ export class ReceiptsPdfService {
           formatMoney(snap.summary?.skippedTotal ?? 0),
         );
 
-      // ✅ FINAL FIX: FORCE PUPPETEER TO USE INSTALLED CHROME
+      // ✅ FINAL FIX — USE SYSTEM CHROMIUM (WORKS ON RENDER)
       const browser = await puppeteer.launch({
         headless: true,
-        executablePath: puppeteer.executablePath(), // 🔥 KEY FIX
+        executablePath:
+          process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
+          '--single-process',
         ],
       });
 
