@@ -11,6 +11,19 @@ function sha256Hex(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex');
 }
 
+function formatMoney(v: any) {
+  return Number(v || 0).toLocaleString();
+}
+
+function formatDate(v: any) {
+  if (!v) return '';
+  try {
+    return new Date(v).toISOString();
+  } catch {
+    return String(v);
+  }
+}
+
 @Injectable()
 export class ReceiptsPdfService {
   constructor(
@@ -28,76 +41,144 @@ export class ReceiptsPdfService {
     return url.replace(/\/$/, '');
   }
 
+  private getTemplatePath(): string {
+    const devPath = path.join(
+      process.cwd(),
+      'src/modules/receipts/templates/receipt.html',
+    );
+
+    const prodPath = path.join(
+      process.cwd(),
+      'dist/modules/receipts/templates/receipt.html',
+    );
+
+    if (fs.existsSync(devPath)) return devPath;
+    if (fs.existsSync(prodPath)) return prodPath;
+
+    throw new Error(
+      `Receipt template not found.\nChecked:\n- ${devPath}\n- ${prodPath}`,
+    );
+  }
+
   async generatePdf(reference: string) {
-    const snap = await this.receiptsService.getSnapshotDto(reference);
-    if (!snap) throw new NotFoundException('Receipt snapshot not found');
+    try {
+      const snap = await this.receiptsService.getSnapshotDto(reference);
+      if (!snap) throw new NotFoundException('Receipt snapshot not found');
 
-    const template = fs.readFileSync(
-      path.join(__dirname, 'templates/receipt.html'),
-      'utf8',
-    );
+      const templatePath = this.getTemplatePath();
+      const template = fs.readFileSync(templatePath, 'utf8');
 
-    const frontendBaseUrl = this.normalizeBaseUrl(
-      this.requireEnv('FRONTEND_BASE_URL'),
-    );
+      const frontendBaseUrl = this.normalizeBaseUrl(
+        this.requireEnv('FRONTEND_BASE_URL'),
+      );
 
-    const verifyUrl = `${frontendBaseUrl}/receipt/${encodeURIComponent(reference)}`;
+      const verifyUrl = `${frontendBaseUrl}/receipt/${encodeURIComponent(reference)}`;
 
-    const qr = await QRCode.toDataURL(verifyUrl);
+      const qr = await QRCode.toDataURL(verifyUrl);
+      const logo = this.requireEnv('RECEIPT_LOGO_URL');
 
-    const logo = this.requireEnv('RECEIPT_LOGO_URL');
+      const status =
+        snap.payment?.status ||
+        (Number(snap.summary?.appliedTotal || 0) > 0
+          ? 'SUCCESS'
+          : 'PENDING');
 
-    const itemsHtml = (snap.items || [])
-      .map(
-        (i: any) => `
-        <tr>
-          <td>${i.poll?.title || ''}</td>
-          <td>${i.nominee?.name || ''}</td>
-          <td>${i.voteQty}</td>
-          <td class="right">NGN ${Number(i.subTotal || 0).toLocaleString()}</td>
-        </tr>
-      `,
-      )
-      .join('');
+      const statusClass =
+        status === 'SUCCESS'
+          ? 'success'
+          : status === 'FAILED'
+          ? 'failed'
+          : 'pending';
 
-    const html = template
-      .replace(/{{logo}}/g, logo)
-      .replace('{{qr}}', qr)
-      .replace('{{status}}', snap.payment?.status || 'UNKNOWN')
-      .replace('{{reference}}', reference)
-      .replace('{{amount}}', snap.payment?.amount || 0)
-      .replace('{{paidAt}}', snap.payment?.paidAt || '')
-      .replace('{{cartUuid}}', snap.cart?.cartUuid || '')
-      .replace('{{cartTotal}}', snap.cart?.totalAmount || 0)
-      .replace('{{items}}', itemsHtml)
-      .replace('{{itemsTotal}}', snap.summary?.itemsTotal || 0)
-      .replace('{{appliedTotal}}', snap.summary?.appliedTotal || 0)
-      .replace('{{skippedTotal}}', snap.summary?.skippedTotal || 0);
+      const itemsHtml = (snap.items || [])
+        .map(
+          (i: any) => `
+          <tr>
+            <td>${i.poll?.title || ''}</td>
+            <td>${i.nominee?.name || ''}</td>
+            <td>${i.voteQty || 0}</td>
+            <td class="right">₦${formatMoney(i.subTotal)}</td>
+          </tr>
+        `,
+        )
+        .join('');
 
-    const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+      const html = template
+        .replace(/{{logo}}/g, logo)
+        .replace('{{qr}}', qr)
+        .replace('{{status}}', status)
+        .replace('{{statusClass}}', statusClass)
+        .replace('{{reference}}', reference)
+        .replace(
+          '{{amount}}',
+          formatMoney(
+            snap.payment?.amount ?? snap.summary?.itemsTotal ?? 0,
+          ),
+        )
+        .replace('{{paidAt}}', formatDate(snap.payment?.paidAt))
+        .replace('{{cartUuid}}', snap.cart?.cartUuid || '')
+        .replace(
+          '{{cartTotal}}',
+          formatMoney(snap.cart?.totalAmount ?? 0),
+        )
+        .replace('{{items}}', itemsHtml)
+        .replace(
+          '{{itemsTotal}}',
+          formatMoney(snap.summary?.itemsTotal ?? 0),
+        )
+        .replace(
+          '{{appliedTotal}}',
+          formatMoney(snap.summary?.appliedTotal ?? 0),
+        )
+        .replace(
+          '{{skippedTotal}}',
+          formatMoney(snap.summary?.skippedTotal ?? 0),
+        );
 
-    const page = await browser.newPage();
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
 
-    await page.setContent(html, {
-      waitUntil: 'networkidle0',
-    });
+      try {
+        const page = await browser.newPage();
 
-    const pdfUint8 = await page.pdf({
-  format: 'A4',
-  printBackground: true,
-});
+        // ✅ FIX 1: Prevent timeout from external resources
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+          if (req.resourceType() === 'image') {
+            req.continue(); // allow images (logo/QR)
+          } else {
+            req.continue();
+          }
+        });
 
-const pdf = Buffer.from(pdfUint8);
+        // ✅ FIX 2: Disable navigation timeout
+        await page.setDefaultNavigationTimeout(0);
 
-    await browser.close();
+        // ✅ FIX 3: FAST render (no more hanging)
+        await page.setContent(html, {
+          waitUntil: 'domcontentloaded',
+        });
 
-    const pdfHash = sha256Hex(pdf);
+        const pdfUint8 = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+        });
 
-    return {
-      pdf,
-      pdfHash,
-    };
+        const pdf = Buffer.from(pdfUint8);
+        const pdfHash = sha256Hex(pdf);
+
+        return {
+          pdf,
+          pdfHash,
+        };
+      } finally {
+        await browser.close();
+      }
+    } catch (err) {
+      console.error('PDF GENERATION ERROR:', err);
+      throw err;
+    }
   }
 }

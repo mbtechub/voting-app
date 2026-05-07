@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <style>
     body {
-      font-family: Inter, Arial, sans-serif;
+      font-family: Arial, sans-serif;
       padding: 40px;
       color: #0f172a;
       background: #ffffff;
@@ -14,88 +14,60 @@
       max-width: 800px;
       margin: auto;
       position: relative;
-      z-index: 1;
     }
 
-    /* WATERMARK */
     .watermark {
       position: fixed;
       top: 45%;
       left: 50%;
       transform: translate(-50%, -50%);
-      opacity: 0.035;
-      width: 320px;
+      opacity: 0.04;
+      width: 300px;
       z-index: 0;
     }
 
-    /* HEADER */
     .header {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .header-left {
-      display: flex;
       align-items: center;
-      gap: 12px;
     }
 
     .logo {
-      height: 42px;
+      height: 40px;
     }
 
     .title {
       font-size: 20px;
-      font-weight: 600;
+      font-weight: bold;
     }
 
-    .qr {
-      text-align: center;
-      font-size: 10px;
-      color: #64748b;
-    }
-
-    /* STATUS */
     .status {
       display: inline-block;
-      padding: 6px 14px;
-      border-radius: 999px;
+      padding: 6px 12px;
+      border-radius: 20px;
       font-size: 12px;
-      font-weight: 600;
       margin-top: 10px;
     }
 
     .status-success {
-      background: #DCFCE7;
+      background: #dcfce7;
       color: #166534;
     }
 
     .status-failed {
-      background: #FEE2E2;
-      color: #991B1B;
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .status-pending {
-      background: #FEF9C3;
-      color: #854D0E;
+      background: #fef9c3;
+      color: #854d0e;
     }
 
-    /* SECTIONS */
     .section {
-      margin-top: 18px;
+      margin-top: 20px;
       font-size: 14px;
       line-height: 1.6;
-    }
-
-    .label {
-      font-weight: 600;
-      color: #0f172a;
-    }
-
-    .muted {
-      color: #64748b;
     }
 
     hr {
@@ -104,11 +76,10 @@
       border-top: 1px solid #e2e8f0;
     }
 
-    /* TABLE */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8px;
+      margin-top: 10px;
     }
 
     th {
@@ -120,30 +91,20 @@
     }
 
     td {
-      padding: 12px 0;
+      padding: 10px 0;
       font-size: 14px;
-      border-bottom: 1px solid #f1f5f9;
     }
 
     .right {
       text-align: right;
     }
 
-    /* TOTALS */
     .totals {
+      text-align: right;
       margin-top: 10px;
       font-size: 14px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
     }
 
-    .totals strong {
-      font-weight: 600;
-    }
-
-    /* FOOTER */
     .footer {
       margin-top: 40px;
       text-align: center;
@@ -155,47 +116,35 @@
 
 <body>
 
-<!-- WATERMARK -->
 <img src="{{logo}}" class="watermark" />
 
 <div class="container">
 
-  <!-- HEADER -->
   <div class="header">
-    <div class="header-left">
-      <img src="{{logo}}" class="logo" />
-      <div class="title">Voting Receipt</div>
-    </div>
-
-    <div class="qr">
-      <img src="{{qr}}" width="80" />
-      <div>Scan to verify</div>
-    </div>
+    <img src="{{logo}}" class="logo" />
+    <div class="title">Voting Receipt</div>
+    <img src="{{qr}}" width="80" />
   </div>
 
-  <!-- STATUS -->
   <div class="status status-{{statusClass}}">
     {{status}}
   </div>
 
-  <!-- PAYMENT INFO -->
   <div class="section">
-    <div><span class="label">Reference:</span> {{reference}}</div>
-    <div><span class="label">Amount:</span> NGN {{amount}}</div>
-    <div><span class="label">Paid At:</span> {{paidAt}}</div>
+    <b>Reference:</b> {{reference}}<br/>
+    <b>Amount:</b> NGN {{amount}}<br/>
+    <b>Paid At:</b> {{paidAt}}
   </div>
 
-  <!-- CART -->
   <div class="section">
-    <div><span class="label">Cart UUID:</span> <span class="muted">{{cartUuid}}</span></div>
-    <div><span class="label">Cart Total:</span> NGN {{cartTotal}}</div>
+    <b>Cart UUID:</b> {{cartUuid}}<br/>
+    <b>Cart Total:</b> NGN {{cartTotal}}
   </div>
 
   <hr/>
 
-  <!-- ITEMS -->
   <div class="section">
-    <div class="label">Items</div>
+    <b>Items</b>
 
     <table>
       <thead>
@@ -215,14 +164,12 @@
 
   <hr/>
 
-  <!-- TOTALS -->
   <div class="totals">
-    <div><strong>Items Total:</strong> NGN {{itemsTotal}}</div>
-    <div><strong>Applied Total:</strong> NGN {{appliedTotal}}</div>
-    <div><strong>Skipped Total:</strong> NGN {{skippedTotal}}</div>
+    <b>Items Total:</b> NGN {{itemsTotal}}<br/>
+    <b>Applied Total:</b> NGN {{appliedTotal}}<br/>
+    <b>Skipped Total:</b> NGN {{skippedTotal}}
   </div>
 
-  <!-- FOOTER -->
   <div class="footer">
     This receipt is generated from an immutable snapshot.
   </div>

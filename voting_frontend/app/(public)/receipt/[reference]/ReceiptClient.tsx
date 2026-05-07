@@ -1,410 +1,324 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { publicFetch } from '@/lib/public-api';
 
 type Receipt = {
-  lookupKey: string;
-  receiptId?: string;
-  payment: {
-    paystackRef: string;
-    status: string;
-    amount: number;
-    paidAt: string | null;
+  payment?: {
+    status?: string;
+    amount?: number;
+    paidAt?: string;
   };
-  cart: {
-    cartId: number;
-    cartUuid: string;
-    status: string;
-    totalAmount: number;
+  cart?: {
+    cartUuid?: string;
+    totalAmount?: number;
   };
-  items: Array<{
-    cartItemId: number | null;
-    election: { electionId: number; title: string };
-    candidate: { candidateId: number; name: string };
-    voteQty: number;
-    pricePerVote: number;
-    subTotal: number;
-    outcome: {
-      applyStatus: string | null;
-      skipReason: string | null;
-      createdAt?: string | null;
-    };
-  }>;
-  summary: {
-    itemsTotal: number;
-    appliedTotal: number;
-    skippedTotal: number;
+  summary?: {
+    itemsTotal?: number;
+    appliedTotal?: number;
+    skippedTotal?: number;
   };
+  items?: {
+    poll?: { title?: string };
+    nominee?: { name?: string };
+    voteQty?: number;
+    subTotal?: number;
+  }[];
 };
 
-type ElectionRow = { electionId: number; title: string };
-
-function isFinalishStatus(status?: string | null) {
-  const s = (status || '').toUpperCase();
-  return s === 'SUCCESS' || s === 'PARTIALLY_APPLIED' || s === 'FAILED';
-}
-
-function formatMoney(n: number) {
-  try {
-    return Number(n || 0).toLocaleString('en-NG', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-  } catch {
-    return String(n);
-  }
-}
-
-function formatNaira(n: number) {
-  return `₦${formatMoney(n)}`;
-}
-
-//NO FALLBACK TO LOCALHOST
-function getApiBase() {
-  const v = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim();
-
-  if (!v) {
-    throw new Error('NEXT_PUBLIC_API_BASE_URL is not set');
-  }
-
-  return v;
-}
-
-function coerceReceiptPayload(input: any): Receipt {
-  if (!input || typeof input !== 'object') throw new Error('Invalid receipt payload');
-  if (!input.payment || typeof input.payment !== 'object') {
-    throw new Error('Receipt payload missing payment');
-  }
-  if (!input.cart || typeof input.cart !== 'object') {
-    throw new Error('Receipt payload missing cart');
-  }
-  if (!Array.isArray(input.items)) throw new Error('Receipt payload missing items');
-  if (!input.summary || typeof input.summary !== 'object') {
-    throw new Error('Receipt payload missing summary');
-  }
-  return input as Receipt;
+function formatMoney(v: any) {
+  return `₦${Number(v || 0).toLocaleString()}`;
 }
 
 export default function ReceiptClient({
   apiBase,
   reference,
 }: {
-  apiBase?: string;
+  apiBase: string;
   reference: string;
 }) {
-  const stableReference = useMemo(() => (reference ?? '').trim(), [reference]);
-
-  // SAFE RESOLUTION (NO LOCALHOST LEAK)
-  const resolvedApiBase = useMemo(() => {
-    const fromProp = (apiBase || '').trim();
-    if (fromProp) return fromProp;
-    return getApiBase();
-  }, [apiBase]);
-
-  const [loading, setLoading] = useState(true);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attemptView, setAttemptView] = useState(1);
-  const [pollTitleById, setPollTitleById] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
-  const attemptsRef = useRef(0);
-  const timerRef = useRef<any>(null);
-  const cancelledRef = useRef(false);
+  const [secondsLeft, setSecondsLeft] = useState(30);
+  const [isPolling, setIsPolling] = useState(true);
 
+  // ✅ FIXED + TYPED POLLING
   useEffect(() => {
-    cancelledRef.current = true;
-    if (timerRef.current) clearTimeout(timerRef.current);
+    let isMounted = true;
+    let attempts = 0;
 
-    cancelledRef.current = false;
-    attemptsRef.current = 0;
-    setAttemptView(1);
-    setReceipt(null);
-    setError(null);
-
-    const maxAttempts = 30;
-
-    if (!stableReference) {
-      setLoading(false);
-      setError('Missing receipt reference.');
-      return;
-    }
-
-    setLoading(true);
-
-    async function fetchReceipt() {
-      if (cancelledRef.current) return;
-
-      const url = `${resolvedApiBase}/api/public/receipt/${encodeURIComponent(stableReference)}`;
-
+    const fetchReceipt = async () => {
       try {
-        const res = await fetch(url, { cache: 'no-store' });
+        const res = await publicFetch<Receipt>(
+          `/api/public/receipt/${reference}`,
+        );
 
-        if (res.status === 404) {
-          attemptsRef.current += 1;
-          setAttemptView(Math.min(attemptsRef.current + 1, maxAttempts));
+        if (!isMounted) return;
 
-          if (attemptsRef.current >= maxAttempts) {
-            setLoading(false);
-            setError('Still processing your payment. Please refresh in a moment.');
-            return;
-          }
+        setReceipt(res);
 
-          timerRef.current = setTimeout(fetchReceipt, 2000);
+        const status =
+          res?.payment?.status ||
+          (Number(res?.summary?.appliedTotal || 0) > 0
+            ? 'SUCCESS'
+            : 'INITIATED');
+
+        if (status === 'SUCCESS') {
+          setLoading(false);
+          setIsPolling(false);
           return;
         }
 
-        if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          throw new Error(text || `Request failed (${res.status})`);
-        }
+        attempts++;
 
-        const json = await res.json().catch(() => null);
-        const data = coerceReceiptPayload(json);
-
-        if (cancelledRef.current) return;
-
-        setReceipt(data);
-
-        const status = (data?.payment?.status || '').toUpperCase();
-
-        if (isFinalishStatus(status)) {
+        if (attempts >= 10) {
           setLoading(false);
-          cancelledRef.current = true;
-          if (timerRef.current) clearTimeout(timerRef.current);
+          setIsPolling(false);
           return;
         }
 
-        attemptsRef.current += 1;
-        setAttemptView(Math.min(attemptsRef.current + 1, maxAttempts));
-
-        if (attemptsRef.current >= maxAttempts) {
-          setLoading(false);
-          return;
-        }
-
-        timerRef.current = setTimeout(fetchReceipt, 2000);
-      } catch (e: any) {
-        if (!cancelledRef.current) {
-          setLoading(false);
-          setError(e?.message || 'Something went wrong');
-        }
+        setTimeout(fetchReceipt, 3000);
+      } catch (err) {
+        console.error('Polling failed:', err);
+        setLoading(false);
+        setIsPolling(false);
       }
-    }
+    };
 
     fetchReceipt();
 
     return () => {
-      cancelledRef.current = true;
-      if (timerRef.current) clearTimeout(timerRef.current);
+      isMounted = false;
     };
-  }, [stableReference, resolvedApiBase]);
+  }, [reference]);
 
+  // ✅ CLEAN COUNTDOWN
   useEffect(() => {
-    if (!receipt?.items?.length) return;
+    if (!isPolling) return;
 
-    let cancelled = false;
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
 
-    async function loadPollTitles() {
-      try {
-        const res = await fetch(`${resolvedApiBase}/api/public/elections`, {
-          cache: 'no-store',
-        });
-        const data = (await res.json().catch(() => ([]))) as ElectionRow[];
-        if (!res.ok) return;
+    return () => clearInterval(timer);
+  }, [isPolling]);
 
-        const map: Record<number, string> = {};
-        for (const e of data || []) {
-          if (typeof e.electionId === 'number' && (e.title || '').trim()) {
-            map[e.electionId] = e.title.trim();
-          }
-        }
-
-        if (!cancelled) setPollTitleById(map);
-      } catch {}
-    }
-
-    loadPollTitles();
-    return () => {
-      cancelled = true;
-    };
-  }, [receipt?.items?.length, resolvedApiBase]);
-
-  useEffect(() => {
-    if (!receipt) return;
-
-    try {
-      window.localStorage.removeItem('cartUuid');
-    } catch {}
-  }, [receipt]);
-
-  const canShowPdf = useMemo(() => {
-    return !!receipt?.payment?.paystackRef && isFinalishStatus(receipt?.payment?.status);
-  }, [receipt]);
-
-  const pdfHref = useMemo(() => {
-    const ref = receipt?.payment?.paystackRef || stableReference;
-    return `${resolvedApiBase}/api/public/receipt/${encodeURIComponent(ref)}/pdf`;
-  }, [receipt, stableReference, resolvedApiBase]);
+  // ✅ STRIPE-STYLE LOADING
   if (loading) {
     return (
-      <div className="rounded-2xl border bg-white p-6 shadow-sm">
-        <p className="text-base font-medium text-slate-900">Processing your payment…</p>
-        <p className="mt-2 text-sm text-slate-600">
-          Waiting for Payment Confirmation..... Attempt {attemptView}/30
-        </p>
-      </div>
-    );
-  }
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="relative mb-6">
+          <div className="h-12 w-12 rounded-full border-4 border-gray-200"></div>
+          <div className="absolute inset-0 h-12 w-12 rounded-full border-4 border-black border-t-transparent animate-spin"></div>
+        </div>
 
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-        <p className="text-base font-semibold text-red-700">Error</p>
-        <p className="mt-2 text-sm text-red-700">{error}</p>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          Confirming your payment...
+        </h2>
+
+        <p className="text-sm text-gray-500">
+          This may take a few seconds
+        </p>
+
+        <p className="mt-3 text-xs text-gray-400">
+          Auto-refreshing ({secondsLeft}s)
+        </p>
       </div>
     );
   }
 
   if (!receipt) {
-    return null;
+    return (
+      <div className="text-center py-16 text-red-500">
+        Failed to load receipt
+      </div>
+    );
   }
 
+  const status =
+    receipt.payment?.status ||
+    (Number(receipt.summary?.appliedTotal || 0) > 0
+      ? 'SUCCESS'
+      : 'INITIATED');
+
+  const statusClass =
+    status === 'SUCCESS'
+      ? 'bg-green-100 text-green-700'
+      : status === 'FAILED'
+      ? 'bg-red-100 text-red-700'
+      : 'bg-yellow-100 text-yellow-700';
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(reference);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+
+    if (navigator.share) {
+      await navigator.share({
+        title: 'Voting Receipt',
+        url,
+      });
+    } else {
+      await navigator.clipboard.writeText(url);
+      alert('Receipt link copied');
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/public/receipt/${reference}/pdf`,
+      );
+
+      if (!res.ok) throw new Error('Download failed');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reference}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Summary</h2>
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 transition-all duration-300">
 
-          {canShowPdf ? (
-            <a
-              href={pdfHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
-            >
-              📄 Download Receipt
-            </a>
-          ) : (
-            <span className="text-sm text-slate-500">
-              Download available after payment confirmation
-            </span>
-          )}
-        </div>
+      {/* STATUS */}
+      <div className="mb-5">
+        <span className={`px-4 py-1 text-xs font-semibold rounded-full ${statusClass}`}>
+          {status}
+        </span>
+      </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border p-4">
-            <p className="text-sm text-slate-500">Payment Status</p>
-            <div className="mt-2">
-              <span
-                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                  receipt.payment.status === 'SUCCESS'
-                    ? 'bg-green-100 text-green-700'
-                    : receipt.payment.status === 'PARTIALLY_APPLIED'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-red-100 text-red-700'
-                }`}
-              >
-                {receipt.payment.status || 'UNKNOWN'}
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-xl border p-4">
-            <p className="text-sm text-slate-500">Amount Paid</p>
-            <p className="mt-1 font-semibold text-slate-900">
-              {formatNaira(receipt.payment.amount ?? 0)}
-            </p>
-          </div>
-
-          <div className="rounded-xl border p-4">
-            <p className="text-sm text-slate-500">Applied Total</p>
-            <p className="mt-1 font-semibold text-slate-900">
-              {formatNaira(receipt.summary.appliedTotal ?? 0)}
-            </p>
-          </div>
-
-          <div className="rounded-xl border p-4">
-            <p className="text-sm text-slate-500">Skipped Total</p>
-            <p className="mt-1 font-semibold text-slate-900">
-              {formatNaira(receipt.summary.skippedTotal ?? 0)}
-            </p>
+      {/* DETAILS */}
+      <div className="grid sm:grid-cols-2 gap-4 text-sm">
+        <div>
+          <p className="text-xs text-gray-500">Reference</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-gray-900">{reference}</p>
+            <button onClick={handleCopy} className="text-xs text-blue-600">
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
           </div>
         </div>
 
-        {receipt.payment.paidAt ? (
-          <p className="mt-4 text-sm text-slate-600">
-            Paid At:{' '}
-            <span className="font-medium text-slate-900">
-              {receipt.payment.paidAt}
-            </span>
+        <div>
+          <p className="text-xs text-gray-500">Amount</p>
+          <p className="font-medium text-gray-900">
+            {formatMoney(
+              receipt.payment?.amount ??
+                receipt.summary?.itemsTotal,
+            )}
           </p>
-        ) : null}
-
-        <p className="mt-2 text-sm text-slate-600">
-          Reference:{' '}
-          <span className="font-medium text-slate-900">
-            {receipt.payment.paystackRef || stableReference}
-          </span>
-        </p>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900">Items</h2>
-
-        <div className="mt-4 grid gap-4">
-          {(receipt.items || []).map((it, idx) => {
-            const pollTitle =
-              (pollTitleById[it.election.electionId] || '').trim() ||
-              (it.election.title || '').trim() ||
-              `Poll #${it.election.electionId}`;
-
-            return (
-              <div
-                key={`${it.cartItemId ?? 'vl'}-${idx}`}
-                className="rounded-2xl border bg-white p-5 shadow-sm"
-              >
-                <div className="grid gap-2 text-sm text-slate-700">
-                  <p>
-                    <span className="font-medium text-slate-900">Poll:</span>{' '}
-                    {pollTitle}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">Nominee:</span>{' '}
-                    {it.candidate.name || `Nominee #${it.candidate.candidateId}`}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">Votes:</span>{' '}
-                    {it.voteQty}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">Price:</span>{' '}
-                    {formatNaira(it.pricePerVote)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">Subtotal:</span>{' '}
-                    {formatNaira(it.subTotal)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-slate-900">Outcome:</span>{' '}
-                    <span
-                      className={`ml-1 rounded-md px-2 py-1 text-xs font-semibold ${
-                        it.outcome.applyStatus === 'APPLIED'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {(it.outcome.applyStatus || 'UNKNOWN').toUpperCase()}
-                    </span>
-                    {it.outcome.skipReason ? (
-                      <span className="text-red-700"> — {it.outcome.skipReason}</span>
-                    ) : null}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
         </div>
-      </section>
+
+        <div>
+          <p className="text-xs text-gray-500">Paid At</p>
+          <p className="font-medium text-gray-900">
+            {receipt.payment?.paidAt || '-'}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-500">Cart Total</p>
+          <p className="font-medium text-gray-900">
+            {formatMoney(receipt.cart?.totalAmount)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 text-sm">
+        <p className="text-xs text-gray-500">Cart UUID</p>
+        <p className="text-gray-600 break-all">
+          {receipt.cart?.cartUuid}
+        </p>
+      </div>
+
+      <hr className="my-6 border-gray-200" />
+
+      {/* ITEMS */}
+      <table className="w-full text-sm">
+        <thead className="text-gray-500 text-xs border-b">
+          <tr>
+            <th className="text-left py-2">Poll</th>
+            <th className="text-left py-2">Nominee</th>
+            <th className="text-left py-2">Votes</th>
+            <th className="text-right py-2">Total</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {(receipt.items || []).map((i, idx) => (
+            <tr key={idx} className="border-b">
+              <td className="py-3">{i.poll?.title}</td>
+              <td>{i.nominee?.name}</td>
+              <td>{i.voteQty}</td>
+              <td className="text-right">
+                {formatMoney(i.subTotal)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <hr className="my-6 border-gray-200" />
+
+      {/* TOTALS */}
+      <div className="flex flex-col items-end text-sm space-y-1">
+        <p>Items Total: {formatMoney(receipt.summary?.itemsTotal)}</p>
+        <p>Applied Total: {formatMoney(receipt.summary?.appliedTotal)}</p>
+        <p>Skipped Total: {formatMoney(receipt.summary?.skippedTotal)}</p>
+      </div>
+
+      {/* ACTIONS */}
+      <div className="flex justify-center gap-3 mt-8">
+        <button onClick={handlePrint} className="px-4 py-2 border rounded-xl">
+          Print
+        </button>
+
+        <button onClick={handleShare} className="px-4 py-2 border rounded-xl">
+          Share
+        </button>
+
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="px-5 py-2 bg-gray-900 text-white rounded-xl"
+        >
+          {downloading ? 'Downloading...' : 'Download PDF'}
+        </button>
+      </div>
+
+      <p className="text-center text-xs text-gray-400 mt-8">
+        MIDE BASH TECHNOLOGY GROUP
+      </p>
     </div>
   );
 }
