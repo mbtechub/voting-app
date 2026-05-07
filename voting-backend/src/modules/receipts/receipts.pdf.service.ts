@@ -135,28 +135,22 @@ export class ReceiptsPdfService {
           formatMoney(snap.summary?.skippedTotal ?? 0),
         );
 
+      // ✅ FINAL FIX: FORCE PUPPETEER TO USE INSTALLED CHROME
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        executablePath: puppeteer.executablePath(), // 🔥 KEY FIX
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
       });
 
       try {
         const page = await browser.newPage();
 
-        // ✅ FIX 1: Prevent timeout from external resources
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-          if (req.resourceType() === 'image') {
-            req.continue(); // allow images (logo/QR)
-          } else {
-            req.continue();
-          }
-        });
-
-        // ✅ FIX 2: Disable navigation timeout
         await page.setDefaultNavigationTimeout(0);
 
-        // ✅ FIX 3: FAST render (no more hanging)
         await page.setContent(html, {
           waitUntil: 'domcontentloaded',
         });
