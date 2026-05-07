@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFileSync } from 'fs';
+import axios from 'axios';
 
 function sha256Hex(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex');
@@ -19,7 +20,6 @@ export class ReceiptsPdfService {
     private readonly configService: ConfigService,
   ) {}
 
-  // ✅ Require env (no hardcoded localhost fallback)
   private requireEnv(name: string): string {
     const v = (this.configService.get<string>(name) || '').trim();
     if (!v) throw new Error(`Missing required env: ${name}`);
@@ -28,6 +28,17 @@ export class ReceiptsPdfService {
 
   private normalizeBaseUrl(url: string) {
     return url.replace(/\/$/, '');
+  }
+
+  private async getLogoBuffer(): Promise<Buffer | null> {
+    try {
+      const url = this.requireEnv('RECEIPT_LOGO_URL');
+      const res = await axios.get(url, { responseType: 'arraybuffer' });
+      return Buffer.from(res.data);
+    } catch (e: any) {
+      console.error('Logo load failed:', e?.message);
+      return null;
+    }
   }
 
   private docToBuffer(doc: InstanceType<typeof PDFDocument>): Promise<Buffer> {
@@ -44,121 +55,158 @@ export class ReceiptsPdfService {
     });
   }
 
-  async generatePdf(
-    reference: string,
-  ): Promise<{ pdf: Buffer; pdfHash: string }> {
+  async generatePdf(reference: string) {
     const snap = await this.receiptsService.getSnapshotDto(reference);
     if (!snap) throw new NotFoundException('Receipt snapshot not found');
 
-    // ✅ Build verify URL from env ONLY
     const frontendBaseUrl = this.normalizeBaseUrl(
       this.requireEnv('FRONTEND_BASE_URL'),
     );
-    const verifyUrl = `${frontendBaseUrl}/receipt/${encodeURIComponent(
-      reference,
-    )}`;
 
-    // ✅ Generate QR as PNG buffer
-    const qrBuffer = await QRCode.toBuffer(verifyUrl, {
-      type: 'png',
-      margin: 1,
-      scale: 6,
-      errorCorrectionLevel: 'M',
-    });
+    const verifyUrl = `${frontendBaseUrl}/receipt/${encodeURIComponent(reference)}`;
 
-    // ✅ Save QR to temp file (pdfkit embeds reliably from file path)
+    const qrBuffer = await QRCode.toBuffer(verifyUrl);
     const qrPath = join(tmpdir(), `receipt-qr-${reference}.png`);
     writeFileSync(qrPath, qrBuffer);
 
-    // ✅ Create PDF
+    const logoBuffer = await this.getLogoBuffer();
+
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
 
     const pageWidth = doc.page.width;
     const margin = 50;
-    const qrSize = 110;
+    const qrSize = 100;
 
-    // ✅ QR position (top-right)
     const qrX = pageWidth - qrSize - margin;
     const qrY = margin;
 
-    // ✅ Embed QR from file path
-    doc.image(qrPath, qrX, qrY, { width: qrSize, height: qrSize });
-    doc.fontSize(9).text('Scan to verify', qrX, qrY + qrSize + 5, {
+    // 🔥 WATERMARK (light background logo)
+    if (logoBuffer) {
+      doc.opacity(0.05);
+      doc.image(logoBuffer, pageWidth / 2 - 150, 250, { width: 300 });
+      doc.opacity(1);
+    }
+
+    // QR
+    doc.image(qrPath, qrX, qrY, { width: qrSize });
+
+    doc.fontSize(8).fillColor('gray').text('Scan to verify', qrX, qrY + qrSize + 5, {
       width: qrSize,
       align: 'center',
     });
 
-    // ✅ Header (full width)
-    doc.fontSize(22).text('Voting Receipt', margin, margin);
+    // LOGO
+    if (logoBuffer) {
+      doc.image(logoBuffer, margin, margin, { width: 50 });
+    }
 
-    // ✅ Push content below QR area so it doesn’t clash
-    doc.y = Math.max(doc.y + 10, qrY + qrSize + 40);
+    // TITLE
+    doc
+      .fontSize(20)
+      .fillColor('#111')
+      .text('Voting Receipt', margin + 60, margin + 12);
+
+    doc.moveDown(2);
 
     const payment = snap.payment || {};
     const cart = snap.cart || {};
     const summary = snap.summary || {};
 
-    // ✅ Summary (full width)
-    doc.fontSize(10);
+    // 🔥 STATUS BADGE
+    const status = payment.status ?? 'UNKNOWN';
+
+    doc
+      .roundedRect(margin, doc.y, 120, 20, 6)
+      .fill(status === 'SUCCESS' ? '#DCFCE7' : '#FEE2E2');
+
+    doc
+      .fillColor(status === 'SUCCESS' ? '#166534' : '#991B1B')
+      .fontSize(10)
+      .text(status, margin + 10, doc.y - 15);
+
+    doc.moveDown(2);
+
+    doc.fillColor('#000').fontSize(10);
+
     doc.text(`Reference: ${reference}`);
-    doc.text(`Status: ${payment.status ?? snap.status ?? 'UNKNOWN'}`);
     doc.text(`Amount: NGN ${payment.amount ?? ''}`);
     doc.text(`Paid At: ${payment.paidAt ?? ''}`);
+
     doc.moveDown();
 
     doc.text(`Cart UUID: ${cart.cartUuid ?? ''}`);
     doc.text(`Cart Total: NGN ${cart.totalAmount ?? ''}`);
+
     doc.moveDown(1.5);
 
-    // ✅ Items
-    doc.fontSize(14).text('Items', { underline: true });
-    doc.moveDown(0.6);
+    // 🔥 DIVIDER
+    doc.moveTo(margin, doc.y).lineTo(pageWidth - margin, doc.y).stroke();
+    doc.moveDown();
+
+    // ITEMS TITLE
+    doc.fontSize(13).text('Items');
+    doc.moveDown(0.5);
+
+    // TABLE HEADERS
+    const col1 = margin;
+    const col2 = 220;
+    const col3 = 330;
+    const col4 = 420;
+
+    doc.font('Helvetica-Bold').fontSize(10);
+
+    doc.text('Poll', col1);
+    doc.text('Nominee', col2);
+    doc.text('Votes', col3);
+    doc.text('Total', col4);
+
+    doc.moveDown(0.5);
+
+    doc.font('Helvetica');
 
     const items = Array.isArray(snap.items) ? snap.items : [];
 
-    if (!items.length) {
-      doc.fontSize(10).text('No items found in snapshot.');
-    } else {
-      items.forEach((it: any, idx: number) => {
-        const electionTitle =
-          it?.poll?.title ??
-          it?.election?.title ??
-          `Poll ${it?.poll?.pollId ?? it?.election?.electionId ?? ''}`;
+    items.forEach((it: any) => {
+      const poll = it?.poll?.title ?? '';
+      const nominee = it?.nominee?.name ?? '';
 
-        const nomineeName =
-          it?.nominee?.name ??
-          it?.candidate?.name ??
-          `Nominee ${it?.nominee?.nomineeId ?? it?.candidate?.candidateId ?? ''}`;
+      doc.text(poll, col1);
+      doc.text(nominee, col2);
+      doc.text(String(it.voteQty ?? ''), col3);
+      doc.text(`NGN ${it.subTotal ?? ''}`, col4);
 
-        doc.fontSize(10).text(`${idx + 1}. ${electionTitle}`);
-        doc.text(`   Nominee: ${nomineeName}`);
-        doc.text(
-          `   Votes: ${it?.voteQty ?? ''} | Price: ${it?.pricePerVote ?? ''} | Subtotal: ${it?.subTotal ?? ''}`,
-        );
-        doc.text(
-          `   Outcome: ${it?.outcome?.applyStatus ?? ''}${
-            it?.outcome?.skipReason ? ` (${it.outcome.skipReason})` : ''
-          }`,
-        );
-        doc.moveDown(0.8);
+      doc.moveDown(0.5);
+    });
+
+    doc.moveDown(1);
+
+    // 🔥 DIVIDER
+    doc.moveTo(margin, doc.y).lineTo(pageWidth - margin, doc.y).stroke();
+    doc.moveDown();
+
+    // TOTALS
+    doc.font('Helvetica-Bold').text('Totals', { align: 'right' });
+
+    doc.font('Helvetica');
+
+    doc.text(`Items Total: NGN ${summary.itemsTotal ?? ''}`, {
+      align: 'right',
+    });
+    doc.text(`Applied Total: NGN ${summary.appliedTotal ?? ''}`, {
+      align: 'right',
+    });
+    doc.text(`Skipped Total: NGN ${summary.skippedTotal ?? ''}`, {
+      align: 'right',
+    });
+
+    doc.moveDown(2);
+
+    doc
+      .fontSize(8)
+      .fillColor('gray')
+      .text('This receipt is generated from an immutable snapshot.', {
+        align: 'center',
       });
-    }
-
-    // ✅ Totals
-    doc.moveDown(0.2);
-    doc.fontSize(14).text('Totals', { underline: true });
-    doc.moveDown(0.6);
-
-    doc.fontSize(10);
-    doc.text(`Items Total: NGN ${summary.itemsTotal ?? ''}`);
-    doc.text(`Applied Total: NGN ${summary.appliedTotal ?? ''}`);
-    doc.text(`Skipped Total: NGN ${summary.skippedTotal ?? ''}`);
-
-    doc.moveDown(1.5);
-    doc.fontSize(8).text(
-      'This receipt is generated from an immutable snapshot.',
-      { align: 'center' },
-    );
 
     const pdf = await this.docToBuffer(doc);
     const pdfHash = sha256Hex(pdf);
