@@ -136,12 +136,11 @@ export class ReceiptsPdfService {
           formatMoney(snap.summary?.skippedTotal ?? 0),
         );
 
-      // ✅ FINAL FIX — RENDER-SAFE CHROMIUM
+      // ✅ FIXED: correct sparticuz chromium usage
       const browser = await puppeteer.launch({
         args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(),
-        headless: chromium.headless,
+        headless: true,
       });
 
       try {
