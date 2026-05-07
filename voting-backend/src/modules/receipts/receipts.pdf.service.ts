@@ -13,6 +13,10 @@ function sha256Hex(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex');
 }
 
+function formatMoney(v: any) {
+  return Number(v || 0).toLocaleString();
+}
+
 @Injectable()
 export class ReceiptsPdfService {
   constructor(
@@ -59,6 +63,9 @@ export class ReceiptsPdfService {
     const snap = await this.receiptsService.getSnapshotDto(reference);
     if (!snap) throw new NotFoundException('Receipt snapshot not found');
 
+    // 🔥 DEBUG (remove later if you want)
+    console.log('SNAPSHOT:', JSON.stringify(snap, null, 2));
+
     const frontendBaseUrl = this.normalizeBaseUrl(
       this.requireEnv('FRONTEND_BASE_URL'),
     );
@@ -80,7 +87,7 @@ export class ReceiptsPdfService {
     const qrX = pageWidth - qrSize - margin;
     const qrY = margin;
 
-    // 🔥 WATERMARK (light background logo)
+    // WATERMARK
     if (logoBuffer) {
       doc.opacity(0.05);
       doc.image(logoBuffer, pageWidth / 2 - 150, 250, { width: 300 });
@@ -89,7 +96,6 @@ export class ReceiptsPdfService {
 
     // QR
     doc.image(qrPath, qrX, qrY, { width: qrSize });
-
     doc.fontSize(8).fillColor('gray').text('Scan to verify', qrX, qrY + qrSize + 5, {
       width: qrSize,
       align: 'center',
@@ -97,7 +103,9 @@ export class ReceiptsPdfService {
 
     // LOGO
     if (logoBuffer) {
-      doc.image(logoBuffer, margin, margin, { width: 50 });
+      try {
+        doc.image(logoBuffer, margin, margin, { width: 50 });
+      } catch {}
     }
 
     // TITLE
@@ -112,46 +120,51 @@ export class ReceiptsPdfService {
     const cart = snap.cart || {};
     const summary = snap.summary || {};
 
-    // 🔥 STATUS BADGE
-    const status = payment.status ?? 'UNKNOWN';
+    // 🔥 FIXED DATA FALLBACK
+    const status = payment.status || snap.status || 'UNKNOWN';
+    const amount = payment.amount ?? snap.amount ?? 0;
+    const paidAt = payment.paidAt ?? snap.paidAt ?? '';
+
+    // STATUS BADGE (FIXED POSITION)
+    const badgeY = doc.y;
 
     doc
-      .roundedRect(margin, doc.y, 120, 20, 6)
+      .roundedRect(margin, badgeY, 110, 20, 6)
       .fill(status === 'SUCCESS' ? '#DCFCE7' : '#FEE2E2');
 
     doc
       .fillColor(status === 'SUCCESS' ? '#166534' : '#991B1B')
       .fontSize(10)
-      .text(status, margin + 10, doc.y - 15);
+      .text(status, margin + 10, badgeY + 5);
 
     doc.moveDown(2);
+    doc.fillColor('#000');
 
-    doc.fillColor('#000').fontSize(10);
-
+    // INFO
+    doc.fontSize(10);
     doc.text(`Reference: ${reference}`);
-    doc.text(`Amount: NGN ${payment.amount ?? ''}`);
-    doc.text(`Paid At: ${payment.paidAt ?? ''}`);
+    doc.text(`Amount: NGN ${formatMoney(amount)}`);
+    doc.text(`Paid At: ${paidAt}`);
 
     doc.moveDown();
 
     doc.text(`Cart UUID: ${cart.cartUuid ?? ''}`);
-    doc.text(`Cart Total: NGN ${cart.totalAmount ?? ''}`);
+    doc.text(`Cart Total: NGN ${formatMoney(cart.totalAmount)}`);
 
     doc.moveDown(1.5);
 
-    // 🔥 DIVIDER
+    // DIVIDER
     doc.moveTo(margin, doc.y).lineTo(pageWidth - margin, doc.y).stroke();
     doc.moveDown();
 
-    // ITEMS TITLE
+    // ITEMS
     doc.fontSize(13).text('Items');
     doc.moveDown(0.5);
 
-    // TABLE HEADERS
     const col1 = margin;
-    const col2 = 220;
-    const col3 = 330;
-    const col4 = 420;
+    const col2 = margin + 200;
+    const col3 = margin + 340;
+    const col4 = pageWidth - margin - 60;
 
     doc.font('Helvetica-Bold').fontSize(10);
 
@@ -161,7 +174,6 @@ export class ReceiptsPdfService {
     doc.text('Total', col4);
 
     doc.moveDown(0.5);
-
     doc.font('Helvetica');
 
     const items = Array.isArray(snap.items) ? snap.items : [];
@@ -170,32 +182,32 @@ export class ReceiptsPdfService {
       const poll = it?.poll?.title ?? '';
       const nominee = it?.nominee?.name ?? '';
 
-      doc.text(poll, col1);
-      doc.text(nominee, col2);
-      doc.text(String(it.voteQty ?? ''), col3);
-      doc.text(`NGN ${it.subTotal ?? ''}`, col4);
+      doc.text(poll, col1, doc.y, { width: 180 });
+      doc.text(nominee, col2, doc.y);
+      doc.text(String(it.voteQty ?? ''), col3, doc.y);
+      doc.text(`NGN ${formatMoney(it.subTotal)}`, col4, doc.y);
 
       doc.moveDown(0.5);
     });
 
     doc.moveDown(1);
 
-    // 🔥 DIVIDER
+    // DIVIDER
     doc.moveTo(margin, doc.y).lineTo(pageWidth - margin, doc.y).stroke();
     doc.moveDown();
 
-    // TOTALS
+    // TOTALS (RIGHT ALIGNED)
     doc.font('Helvetica-Bold').text('Totals', { align: 'right' });
 
     doc.font('Helvetica');
 
-    doc.text(`Items Total: NGN ${summary.itemsTotal ?? ''}`, {
+    doc.text(`Items Total: NGN ${formatMoney(summary.itemsTotal)}`, {
       align: 'right',
     });
-    doc.text(`Applied Total: NGN ${summary.appliedTotal ?? ''}`, {
+    doc.text(`Applied Total: NGN ${formatMoney(summary.appliedTotal)}`, {
       align: 'right',
     });
-    doc.text(`Skipped Total: NGN ${summary.skippedTotal ?? ''}`, {
+    doc.text(`Skipped Total: NGN ${formatMoney(summary.skippedTotal)}`, {
       align: 'right',
     });
 
