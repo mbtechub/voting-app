@@ -1,8 +1,8 @@
 {
   "name": "voting-backend",
   "version": "0.0.1",
-  "description": "OBASHOLA M. AYOMIDE",
-  "author": "",
+  "description": "",
+  "author": "OBASHOLA M. AYOMIDE",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
