@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import fs from 'fs';
 import path from 'path';
+import https from 'https';
 
 function sha256Hex(buf: Buffer) {
   return createHash('sha256').update(buf).digest('hex');
@@ -23,6 +24,27 @@ function formatDate(v: any) {
   } catch {
     return String(v);
   }
+}
+
+// ✅ NEW: Convert image URL → base64
+function imageToBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (res) => {
+        const chunks: Uint8Array[] = [];
+
+        res.on('data', (chunk) => chunks.push(chunk));
+
+        res.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          const base64 = buffer.toString('base64');
+          resolve(`data:image/png;base64,${base64}`);
+        });
+
+        res.on('error', reject);
+      })
+      .on('error', reject);
+  });
 }
 
 @Injectable()
@@ -76,7 +98,17 @@ export class ReceiptsPdfService {
       const verifyUrl = `${frontendBaseUrl}/receipt/${encodeURIComponent(reference)}`;
 
       const qr = await QRCode.toDataURL(verifyUrl);
-      const logo = this.requireEnv('RECEIPT_LOGO_URL');
+
+      // ✅ FIX: Convert logo to base64
+      const logoUrl = this.requireEnv('RECEIPT_LOGO_URL');
+      let logo: string;
+
+      try {
+        logo = await imageToBase64(logoUrl);
+      } catch (err) {
+        console.warn('⚠️ Logo fetch failed, using fallback:', err);
+        logo = logoUrl; // fallback (still tries URL)
+      }
 
       const status =
         snap.payment?.status ||
@@ -136,7 +168,6 @@ export class ReceiptsPdfService {
           formatMoney(snap.summary?.skippedTotal ?? 0),
         );
 
-      // ✅ FIXED: correct sparticuz chromium usage
       const browser = await puppeteer.launch({
         args: chromium.args,
         executablePath: await chromium.executablePath(),
