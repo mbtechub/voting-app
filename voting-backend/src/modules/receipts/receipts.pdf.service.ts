@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { ReceiptsService } from './receipts.service';
 import QRCode from 'qrcode';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import fs from 'fs';
 import path from 'path';
 
@@ -135,17 +136,12 @@ export class ReceiptsPdfService {
           formatMoney(snap.summary?.skippedTotal ?? 0),
         );
 
-      // ✅ FINAL FIX — USE SYSTEM CHROMIUM (WORKS ON RENDER)
+      // ✅ FINAL FIX — RENDER-SAFE CHROMIUM
       const browser = await puppeteer.launch({
-        headless: true,
-        executablePath:
-          process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--single-process',
-        ],
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
       });
 
       try {
