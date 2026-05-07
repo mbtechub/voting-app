@@ -340,7 +340,7 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          placeholder="you@mail.com"
           className="w-full rounded-xl border px-4 py-3"
         />
 

@@ -15,7 +15,7 @@ type Poll = {
 
 type Nominee = {
   candidateId: number;
-  electionId: number; // ✅ FIX ADDED
+  electionId: number; 
   name: string;
   photoUrl?: string | null;
 };
@@ -61,7 +61,7 @@ export default function VotePollPage() {
 
         const normalized: Nominee[] = candidates.map((c) => ({
           candidateId: c.candidateId,
-          electionId: electionId, // ✅ FIX ADDED
+          electionId: electionId, // 
           name: c.name,
           photoUrl:
             c.photoUrl ??
@@ -90,13 +90,17 @@ export default function VotePollPage() {
 
   /* -------------------- STATES -------------------- */
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-16 text-sm text-gray-500">
-        Loading poll...
-      </div>
-    );
-  }
+ if (loading) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16">
+      {/* Spinner */}
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900 mb-4" />
+
+      {/* Text */}
+      <p className="text-sm text-slate-500">Loading poll...</p>
+    </div>
+  );
+}
 
   if (error) {
     return (

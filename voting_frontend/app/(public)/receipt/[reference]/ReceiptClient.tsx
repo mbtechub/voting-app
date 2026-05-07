@@ -59,7 +59,7 @@ function formatNaira(n: number) {
   return `₦${formatMoney(n)}`;
 }
 
-// ✅ FIXED — NO FALLBACK TO LOCALHOST
+//NO FALLBACK TO LOCALHOST
 function getApiBase() {
   const v = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim();
 
@@ -94,7 +94,7 @@ export default function ReceiptClient({
 }) {
   const stableReference = useMemo(() => (reference ?? '').trim(), [reference]);
 
-  // ✅ SAFE RESOLUTION (NO LOCALHOST LEAK)
+  // SAFE RESOLUTION (NO LOCALHOST LEAK)
   const resolvedApiBase = useMemo(() => {
     const fromProp = (apiBase || '').trim();
     if (fromProp) return fromProp;
@@ -250,7 +250,7 @@ export default function ReceiptClient({
       <div className="rounded-2xl border bg-white p-6 shadow-sm">
         <p className="text-base font-medium text-slate-900">Processing your payment…</p>
         <p className="mt-2 text-sm text-slate-600">
-          Waiting for webhook confirmation. Attempt {attemptView}/30
+          Waiting for Payment Confirmation..... Attempt {attemptView}/30
         </p>
       </div>
     );
@@ -282,11 +282,11 @@ export default function ReceiptClient({
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
             >
-              📄 Download PDF
+              📄 Download Receipt
             </a>
           ) : (
             <span className="text-sm text-slate-500">
-              PDF available after confirmation
+              Download available after payment confirmation
             </span>
           )}
         </div>

@@ -146,7 +146,6 @@ export default function VoteClient({
 
         <div className="grid gap-4">
           {candidates.map((raw) => {
-            // 🔥 FINAL NORMALIZATION (covers ALL cases)
             const photoUrl =
               raw.photoUrl ??
               (raw as any).photo_url ??
