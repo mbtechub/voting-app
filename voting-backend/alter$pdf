@@ -1,0 +1,77 @@
+--------------------------------------------------------
+-- STEP 1: ADD PDF_BLOB COLUMN (SAFE)
+--------------------------------------------------------
+
+BEGIN
+    EXECUTE IMMEDIATE 'ALTER TABLE RECEIPTS ADD PDF_BLOB BLOB';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE = -1430 THEN
+            NULL; -- column already exists, ignore
+        ELSE
+            RAISE;
+        END IF;
+END;
+/
+
+--------------------------------------------------------
+-- STEP 2: ADD PDF_GENERATED_AT COLUMN (SAFE)
+--------------------------------------------------------
+
+BEGIN
+    EXECUTE IMMEDIATE 'ALTER TABLE RECEIPTS ADD PDF_GENERATED_AT DATE';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE = -1430 THEN
+            NULL; -- column already exists, ignore
+        ELSE
+            RAISE;
+        END IF;
+END;
+/
+
+--------------------------------------------------------
+-- STEP 3: UPDATE TRIGGER (IMMUTABILITY FIX)
+--------------------------------------------------------
+
+CREATE OR REPLACE TRIGGER TRG_RECEIPTS_IMMUTABLE
+BEFORE UPDATE ON RECEIPTS
+FOR EACH ROW
+BEGIN
+    IF UPPER(:OLD.STATUS) IN ('SUCCESS', 'PARTIALLY_APPLIED') THEN
+
+        -- ✅ Allow first-time PDF writes only
+        IF (:OLD.PDF_HASH IS NULL AND :NEW.PDF_HASH IS NOT NULL)
+           OR (:OLD.PDF_BLOB IS NULL AND :NEW.PDF_BLOB IS NOT NULL) THEN
+            NULL;
+        ELSE
+            RAISE_APPLICATION_ERROR(-20001, 'Receipt is immutable after finalization.');
+        END IF;
+
+    END IF;
+END;
+/
+
+--------------------------------------------------------
+-- STEP 4: ENSURE TRIGGER IS ENABLED
+--------------------------------------------------------
+
+ALTER TRIGGER TRG_RECEIPTS_IMMUTABLE ENABLE;
+/
+
+--------------------------------------------------------
+-- STEP 5: VERIFY STRUCTURE
+--------------------------------------------------------
+
+SELECT COLUMN_NAME
+FROM USER_TAB_COLUMNS
+WHERE TABLE_NAME = 'RECEIPTS'
+AND COLUMN_NAME IN ('PDF_BLOB', 'PDF_GENERATED_AT', 'PDF_HASH');
+
+--------------------------------------------------------
+-- STEP 6: VERIFY TRIGGER STATUS
+--------------------------------------------------------
+
+SELECT TRIGGER_NAME, STATUS
+FROM USER_TRIGGERS
+WHERE TRIGGER_NAME = 'TRG_RECEIPTS_IMMUTABLE';

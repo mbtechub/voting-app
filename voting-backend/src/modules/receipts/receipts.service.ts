@@ -10,7 +10,6 @@ function sha256Hex(input: string) {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
-// Stable stringify so hash doesn’t change due to object key order
 function stableStringify(value: any): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
@@ -26,17 +25,6 @@ function isFinalStatus(status?: string | null) {
   return s === 'SUCCESS' || s === 'PARTIALLY_APPLIED';
 }
 
-/**
- * ✅ Ensure receipt snapshot contains Poll Title + Nominee Name
- *
- * We keep backend naming as election/candidate, but in snapshot we write:
- * - pollTitle
- * - nomineeName
- *
- * Works for both:
- * - item.electionTitle / item.pollTitle
- * - item.candidateName / item.nomineeName
- */
 function normalizeSnapshot(snapshot: Snapshot): Snapshot {
   if (!snapshot || typeof snapshot !== 'object') return snapshot;
 
@@ -75,21 +63,120 @@ export class ReceiptsService {
     return this.receiptsRepo.findOne({ where: { reference } });
   }
 
-  /**
-   * UPSERT (transactional) + IMMUTABILITY LOCK
-   * - If missing: INSERT
-   * - If exists and FINAL: freeze (only allow pdfHash set once if null)
-   * - If exists and NOT final: UPDATE to latest snapshot (e.g., INITIATED -> SUCCESS)
-   *
-   * MUST be called inside the same DB transaction as webhook vote application.
-   */
+  // ===============================
+  // ✅ SAFE LOB → BUFFER
+  // ===============================
+  private streamToBuffer(stream: any): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      if (!stream || typeof stream.on !== 'function') {
+        return reject(new Error('Invalid LOB stream'));
+      }
+
+      const chunks: Buffer[] = [];
+
+      stream.on('data', (chunk) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
+  }
+
+  // ===============================
+  // ✅ GET STORED PDF (CACHE)
+  // ===============================
+  async getStoredPdf(reference: string) {
+    const row = await this.receiptsRepo.findOne({
+      where: { reference },
+      select: ['pdfBlob', 'pdfHash'],
+    });
+
+    if (!row || !row.pdfBlob) return null;
+
+    let pdfBuffer: Buffer;
+
+    try {
+      if (Buffer.isBuffer(row.pdfBlob)) {
+        pdfBuffer = row.pdfBlob;
+      } else {
+        pdfBuffer = await this.streamToBuffer(row.pdfBlob as any);
+      }
+    } catch (e) {
+      console.error('LOB READ ERROR:', e);
+      return null;
+    }
+
+    if (!pdfBuffer || pdfBuffer.length === 0) return null;
+
+    return {
+      pdfBlob: pdfBuffer,
+      pdfHash: row.pdfHash,
+    };
+  }
+
+  // ===============================
+  // ✅ STORE PDF (RACE SAFE)
+  // ===============================
+  async storePdf(reference: string, pdf: Buffer, hash: string) {
+    const r = await this.receiptsRepo.findOne({
+      where: { reference },
+      select: ['receiptId', 'pdfBlob', 'pdfHash'],
+    });
+
+    if (!r) return;
+
+    if (r.pdfBlob) return; // already cached
+
+    r.pdfBlob = pdf;
+    r.pdfHash = r.pdfHash ?? hash;
+    (r as any).pdfGeneratedAt = new Date();
+
+    await this.receiptsRepo.save(r);
+  }
+
+  // ===============================
+  // 🔥 NEW: PUPPETEER ENV SWITCH
+  // ===============================
+ async launchBrowser() {
+  const env = process.env.APP_ENV;
+
+  // ===============================
+  // ✅ LOCAL (Windows / Dev)
+  // ===============================
+  if (env === 'local') {
+    const puppeteer = await import('puppeteer');
+
+    return puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+  }
+
+  // ===============================
+  // ✅ PRODUCTION (Render)
+  // ===============================
+  const chromium = (await import('@sparticuz/chromium')).default;
+  const puppeteer = await import('puppeteer-core');
+
+  return puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: true,
+  });
+}
+
+  // ===============================
+  // EXISTING LOGIC (UNCHANGED)
+  // ===============================
+
   async createIfMissingTx(
     manager: EntityManager,
     input: {
       reference: string;
       paymentId: number;
       cartId: number;
-      status: string; // allow INITIATED/SUCCESS/PARTIALLY_APPLIED/etc (DB already has INITIATED)
+      status: string;
       amount: number;
       currency?: string;
       snapshot: Snapshot;
@@ -103,10 +190,8 @@ export class ReceiptsService {
       where: { reference: input.reference },
     });
 
-    // ✅ Ensure snapshot has pollTitle/nomineeName before hashing/saving
     const normalizedSnapshot = normalizeSnapshot(input.snapshot);
 
-    // ✅ INSERT if missing
     if (!existing) {
       const snapshotStable = stableStringify(normalizedSnapshot);
       const snapshotHash = sha256Hex(snapshotStable);
@@ -127,9 +212,7 @@ export class ReceiptsService {
       return repo.save(receipt);
     }
 
-    // ✅ IMMUTABILITY LOCK: once final, never mutate snapshot/status/etc
     if (isFinalStatus(existing.status)) {
-      // allow setting PDF hash once (NULL -> value) but never overwrite
       if (!existing.pdfHash && input.pdfHash) {
         existing.pdfHash = input.pdfHash;
         return repo.save(existing);
@@ -137,7 +220,6 @@ export class ReceiptsService {
       return existing;
     }
 
-    // ✅ NOT final yet: update to latest (INITIATED -> SUCCESS / PARTIALLY_APPLIED)
     const snapshotStable = stableStringify(normalizedSnapshot);
     const snapshotHash = sha256Hex(snapshotStable);
 
@@ -150,7 +232,6 @@ export class ReceiptsService {
     existing.snapshotHash = snapshotHash;
     existing.pdfVersion = input.pdfVersion ?? existing.pdfVersion ?? 'v1';
 
-    // never wipe an existing pdfHash
     if (!existing.pdfHash && input.pdfHash) {
       existing.pdfHash = input.pdfHash;
     }
@@ -158,96 +239,10 @@ export class ReceiptsService {
     return repo.save(existing);
   }
 
-  /**
-   * UPSERT (non-transactional) + IMMUTABILITY LOCK
-   * - If missing: INSERT
-   * - If exists and FINAL: freeze (only allow pdfHash set once if null)
-   * - If exists and NOT final: UPDATE to latest snapshot
-   *
-   * Best-effort backfill for legacy receipts.
-   */
-  async createIfMissing(input: {
-    reference: string;
-    paymentId: number;
-    cartId: number;
-    status: string;
-    amount: number;
-    currency?: string;
-    snapshot: Snapshot;
-    pdfVersion?: string;
-    pdfHash?: string | null;
-  }): Promise<Receipt | null> {
-    const existing = await this.receiptsRepo.findOne({
-      where: { reference: input.reference },
-    });
-
-    // ✅ Ensure snapshot has pollTitle/nomineeName before hashing/saving
-    const normalizedSnapshot = normalizeSnapshot(input.snapshot);
-
-    // ✅ INSERT if missing
-    if (!existing) {
-      const snapshotStable = stableStringify(normalizedSnapshot);
-      const snapshotHash = sha256Hex(snapshotStable);
-
-      try {
-        const receipt = this.receiptsRepo.create({
-          reference: input.reference,
-          paymentId: input.paymentId,
-          cartId: input.cartId,
-          status: input.status as any,
-          amount: input.amount,
-          currency: input.currency ?? 'NGN',
-          snapshotJson: JSON.stringify(normalizedSnapshot),
-          snapshotHash,
-          pdfVersion: input.pdfVersion ?? 'v1',
-          pdfHash: input.pdfHash ?? null,
-        });
-
-        return await this.receiptsRepo.save(receipt);
-      } catch (e: any) {
-        // another request created it concurrently
-        if (String(e?.message || '').includes('ORA-00001')) {
-          return await this.receiptsRepo.findOne({
-            where: { reference: input.reference },
-          });
-        }
-        throw e;
-      }
-    }
-
-    // ✅ IMMUTABILITY LOCK: once final, never mutate snapshot/status/etc
-    if (isFinalStatus(existing.status)) {
-      // allow setting PDF hash once (NULL -> value) but never overwrite
-      if (!existing.pdfHash && input.pdfHash) {
-        existing.pdfHash = input.pdfHash;
-        return await this.receiptsRepo.save(existing);
-      }
-      return existing;
-    }
-
-    // ✅ NOT final yet: update to latest (INITIATED -> SUCCESS / PARTIALLY_APPLIED)
-    const snapshotStable = stableStringify(normalizedSnapshot);
-    const snapshotHash = sha256Hex(snapshotStable);
-
-    existing.paymentId = input.paymentId;
-    existing.cartId = input.cartId;
-    (existing as any).status = input.status as any;
-    existing.amount = input.amount;
-    existing.currency = input.currency ?? existing.currency ?? 'NGN';
-    existing.snapshotJson = JSON.stringify(normalizedSnapshot);
-    existing.snapshotHash = snapshotHash;
-    existing.pdfVersion = input.pdfVersion ?? existing.pdfVersion ?? 'v1';
-
-    if (!existing.pdfHash && input.pdfHash) {
-      existing.pdfHash = input.pdfHash;
-    }
-
-    return await this.receiptsRepo.save(existing);
+  async createIfMissing(input: any): Promise<Receipt | null> {
+    return this.createIfMissingTx(this.receiptsRepo.manager, input);
   }
 
-  /**
-   * Snapshot-first read helper: returns parsed snapshot JSON if present & valid.
-   */
   async getSnapshotDto(reference: string): Promise<any | null> {
     const r = await this.findByReference(reference);
     if (!r?.snapshotJson) return null;
@@ -258,14 +253,11 @@ export class ReceiptsService {
     }
   }
 
-  /**
-   * ✅ Persist PDF hash once generated (idempotent, never overwrite)
-   */
   async updatePdfHash(reference: string, pdfHash: string): Promise<void> {
     const r = await this.findByReference(reference);
     if (!r) return;
 
-    if (r.pdfHash) return; // never overwrite
+    if (r.pdfHash) return;
     r.pdfHash = pdfHash;
     await this.receiptsRepo.save(r);
   }

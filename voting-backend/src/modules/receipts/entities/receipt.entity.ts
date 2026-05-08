@@ -15,8 +15,9 @@ export class Receipt {
   @Column({ name: 'CART_ID', type: 'number' })
   cartId: number;
 
+  // ✅ FIXED: allow full lifecycle
   @Column({ name: 'STATUS', type: 'varchar2', length: 30 })
-  status: 'SUCCESS' | 'PARTIALLY_APPLIED';
+  status: 'INITIATED' | 'SUCCESS' | 'PARTIALLY_APPLIED' | 'FAILED';
 
   @Column({ name: 'AMOUNT', type: 'number', precision: 12, scale: 2 })
   amount: number;
@@ -35,6 +36,24 @@ export class Receipt {
 
   @Column({ name: 'PDF_HASH', type: 'varchar2', length: 64, nullable: true })
   pdfHash?: string | null;
+
+  // ===============================
+  // ✅ NEW: PDF CACHING (CRITICAL)
+  // ===============================
+
+  @Column({
+    name: 'PDF_BLOB',
+    type: 'blob',
+    nullable: true,
+  })
+  pdfBlob?: Buffer;
+
+  @Column({
+    name: 'PDF_GENERATED_AT',
+    type: 'date',
+    nullable: true,
+  })
+  pdfGeneratedAt?: Date;
 
   @Column({ name: 'CREATED_AT', type: 'date', default: () => 'SYSDATE' })
   createdAt: Date;

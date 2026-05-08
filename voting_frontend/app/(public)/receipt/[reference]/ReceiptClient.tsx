@@ -179,33 +179,53 @@ export default function ReceiptClient({
   };
 
   const handleDownload = async () => {
-    try {
-      setDownloading(true);
+  try {
+    setDownloading(true);
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/public/receipt/${reference}/pdf`,
-      );
+    // ✅ Always build URL safely
+    const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
+    const url = `${base}/api/public/receipt/${reference}/pdf`;
 
-      if (!res.ok) throw new Error('Download failed');
+    console.log('📥 Downloading receipt from:', url);
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+    const res = await fetch(url, {
+      method: 'GET',
+    });
 
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${reference}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert('Download failed');
-    } finally {
-      setDownloading(false);
+    // 🔥 CRITICAL: show real backend error
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('❌ DOWNLOAD ERROR:', text);
+      throw new Error(text || `Download failed (${res.status})`);
     }
-  };
+
+    const blob = await res.blob();
+
+    // ✅ Safety check (prevents empty/corrupt PDF)
+    if (!blob || blob.size === 0) {
+      throw new Error('Empty PDF received');
+    }
+
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${reference}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+
+    console.log('✅ Download successful');
+
+  } catch (err) {
+    console.error('❌ DOWNLOAD FAILED:', err);
+    alert('Download failed. Check console for details.');
+  } finally {
+    setDownloading(false);
+  }
+};
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 transition-all duration-300">

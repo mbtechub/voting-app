@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { ReceiptsService } from './receipts.service';
 import QRCode from 'qrcode';
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+//import puppeteer from 'puppeteer-core';
+//import chromium from '@sparticuz/chromium';
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
@@ -168,11 +168,28 @@ export class ReceiptsPdfService {
           formatMoney(snap.summary?.skippedTotal ?? 0),
         );
 
-      const browser = await puppeteer.launch({
-        args: chromium.args,
-        executablePath: await chromium.executablePath(),
-        headless: true,
-      });
+     let browser;
+
+if (process.env.APP_ENV === 'local') {
+  // ✅ LOCAL (Windows)
+  const puppeteer = await import('puppeteer');
+
+  browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+} else {
+  // ✅ PRODUCTION (Render)
+  const chromium = (await import('@sparticuz/chromium')).default;
+  const puppeteer = await import('puppeteer-core');
+
+  browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: true,
+  });
+}
 
       try {
         const page = await browser.newPage();
