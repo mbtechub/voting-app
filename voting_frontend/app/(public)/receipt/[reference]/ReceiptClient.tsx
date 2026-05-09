@@ -9,18 +9,43 @@ type Receipt = {
     amount?: number;
     paidAt?: string;
   };
+
   cart?: {
     cartUuid?: string;
     totalAmount?: number;
   };
+
   summary?: {
     itemsTotal?: number;
     appliedTotal?: number;
     skippedTotal?: number;
   };
+
   items?: {
-    poll?: { title?: string };
-    nominee?: { name?: string };
+    // ✅ PDF-style structure
+    poll?: {
+      title?: string;
+    };
+
+    nominee?: {
+      name?: string;
+    };
+
+    // ✅ API-style structure
+    election?: {
+      electionId?: number;
+      title?: string;
+    };
+
+    candidate?: {
+      candidateId?: number;
+      name?: string;
+    };
+
+    // ✅ fallback aliases
+    pollTitle?: string;
+    nomineeName?: string;
+
     voteQty?: number;
     subTotal?: number;
   }[];
@@ -226,7 +251,6 @@ export default function ReceiptClient({
     setDownloading(false);
   }
 };
-
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 transition-all duration-300">
 
@@ -295,50 +319,63 @@ export default function ReceiptClient({
         </thead>
 
         <tbody>
-          {(receipt.items || []).map((i, idx) => (
-            <tr key={idx} className="border-b">
-              <td className="py-3">{i.poll?.title}</td>
-              <td>{i.nominee?.name}</td>
-              <td>{i.voteQty}</td>
-              <td className="text-right">
-                {formatMoney(i.subTotal)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  {(receipt.items || []).map((i, idx) => {
+    const pollTitle =
+  i.election?.title ||
+  i.poll?.title ||
+  i.pollTitle ||
+  '-';
 
-      <hr className="my-6 border-gray-200" />
+const nomineeName =
+  i.candidate?.name ||
+  i.nominee?.name ||
+  i.nomineeName ||
+  '-';
+    return (
+      <tr key={idx} className="border-b">
+        <td className="py-3">{pollTitle}</td>
+        <td>{nomineeName}</td>
+        <td>{i.voteQty ?? 0}</td>
+        <td className="text-right">
+          {formatMoney(i.subTotal)}
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
+</table>
 
-      {/* TOTALS */}
-      <div className="flex flex-col items-end text-sm space-y-1">
-        <p>Items Total: {formatMoney(receipt.summary?.itemsTotal)}</p>
-        <p>Applied Total: {formatMoney(receipt.summary?.appliedTotal)}</p>
-        <p>Skipped Total: {formatMoney(receipt.summary?.skippedTotal)}</p>
-      </div>
+<hr className="my-6 border-gray-200" />
 
-      {/* ACTIONS */}
-      <div className="flex justify-center gap-3 mt-8">
-        <button onClick={handlePrint} className="px-4 py-2 border rounded-xl">
-          Print
-        </button>
+{/* TOTALS */}
+<div className="flex flex-col items-end text-sm space-y-1">
+  <p>Items Total: {formatMoney(receipt.summary?.itemsTotal)}</p>
+  <p>Applied Total: {formatMoney(receipt.summary?.appliedTotal)}</p>
+  <p>Skipped Total: {formatMoney(receipt.summary?.skippedTotal)}</p>
+</div>
 
-        <button onClick={handleShare} className="px-4 py-2 border rounded-xl">
-          Share
-        </button>
+{/* ACTIONS */}
+<div className="flex justify-center gap-3 mt-8">
+  <button onClick={handlePrint} className="px-4 py-2 border rounded-xl">
+    Print
+  </button>
 
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="px-5 py-2 bg-gray-900 text-white rounded-xl"
-        >
-          {downloading ? 'Downloading...' : 'Download PDF'}
-        </button>
-      </div>
+  <button onClick={handleShare} className="px-4 py-2 border rounded-xl">
+    Share
+  </button>
 
-      <p className="text-center text-xs text-gray-400 mt-8">
-        MIDE BASH TECHNOLOGY GROUP
-      </p>
+  <button
+    onClick={handleDownload}
+    disabled={downloading}
+    className="px-5 py-2 bg-gray-900 text-white rounded-xl"
+  >
+    {downloading ? 'Downloading...' : 'Download PDF'}
+  </button>
+</div>
+
+<p className="text-center text-xs text-gray-400 mt-8">
+  MIDE BASH TECHNOLOGY GROUP
+</p>
     </div>
   );
 }

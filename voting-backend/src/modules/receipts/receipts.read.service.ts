@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+
 import { ReceiptsService } from './receipts.service';
 
+import { Election } from '../elections/entities/election.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Cart } from '../cart/entities/cart.entity';
 import { VoteLog } from '../votes/entities/vote-log.entity';
@@ -11,11 +13,21 @@ import { Candidate } from '../candidates/entities/candidate.entity';
 type ReceiptItemDto = {
   cartItemId: number | null;
   voteLogId: number;
-  election: { electionId: number; title: string };
-  candidate: { candidateId: number; name: string };
+
+  election: {
+    electionId: number;
+    title: string;
+  };
+
+  candidate: {
+    candidateId: number;
+    name: string;
+  };
+
   voteQty: number;
   pricePerVote: number;
   subTotal: number;
+
   outcome: {
     applyStatus: string;
     skipReason: string | null;
@@ -25,7 +37,12 @@ type ReceiptItemDto = {
 
 function isFinalishStatus(status?: string | null) {
   const s = (status || '').toUpperCase();
-  return s === 'SUCCESS' || s === 'PARTIALLY_APPLIED' || s === 'FAILED';
+
+  return (
+    s === 'SUCCESS' ||
+    s === 'PARTIALLY_APPLIED' ||
+    s === 'FAILED'
+  );
 }
 
 @Injectable()
@@ -44,55 +61,112 @@ export class ReceiptsReadService {
 
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
+
+    // ✅ NEW
+    @InjectRepository(Election)
+    private readonly electionRepo: Repository<Election>,
   ) {}
 
   async getReceiptByReference(reference: string) {
-    const pdfUrl = `/api/public/receipt/${encodeURIComponent(reference)}/pdf`;
+    const pdfUrl =
+      `/api/public/receipt/${encodeURIComponent(reference)}/pdf`;
 
-    // 1️⃣ Snapshot-first (immutable)
-    // ✅ If snapshot exists AND is FINAL => return it (immutable rule)
-    // ✅ If snapshot exists but is NOT final (e.g. INITIATED) => rebuild from DB and attempt upsert
-    const snapshot = await this.receiptsService.getSnapshotDto(reference);
+    // 1️⃣ TEMP: BYPASS OLD SNAPSHOTS
+// Old immutable snapshots may still contain:
+// "Election 14"
+// instead of real DB titles.
+//
+// So we force rebuild fresh receipt data
+// directly from DB joins.
 
-    if (snapshot) {
-      const snapStatus = (snapshot?.payment?.status || '').toUpperCase();
-      if (isFinalishStatus(snapStatus)) {
-        return { ...snapshot, pdfUrl };
-      }
-      // Not final → fall through to rebuild
+const snapshot =
+  await this.receiptsService.getSnapshotDto(reference);
+
+
+if (snapshot) {
+  const snapStatus =
+    (snapshot?.payment?.status || '').toUpperCase();
+
+  if (isFinalishStatus(snapStatus)) {
+    return {
+      ...snapshot,
+      pdfUrl,
+    };
+  }
+}
+
+
+    // 2️⃣ Load payment
+    const payment = await this.paymentRepo.findOne({
+      where: {
+        paystackRef: reference,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
     }
 
-    // 2️⃣ Load payment + cart
-    const payment = await this.paymentRepo.findOne({
-      where: { paystackRef: reference },
-    });
-    if (!payment) throw new NotFoundException('Payment not found');
-
+    // 3️⃣ Load cart
     const cart = await this.cartRepo.findOne({
-      where: { cartId: payment.cartId },
+      where: {
+        cartId: payment.cartId,
+      },
     });
-    if (!cart) throw new NotFoundException('Cart not found');
 
-    // 3️⃣ Load vote logs
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
+    }
+
+    // 4️⃣ Load vote logs
     const voteLogs = await this.voteLogRepo.find({
-      where: { reference },
-      order: { voteLogId: 'ASC' as any },
+      where: {
+        reference,
+      },
+      order: {
+        voteLogId: 'ASC' as any,
+      },
     });
 
-    // 4️⃣ Load candidates (real names)
-    const candidateIds = Array.from(new Set(voteLogs.map((v) => v.candidateId)));
+    // 5️⃣ Candidate IDs
+    const candidateIds = Array.from(
+      new Set(voteLogs.map((v) => v.candidateId)),
+    );
 
+    // 6️⃣ Election IDs
+    const electionIds = Array.from(
+      new Set(voteLogs.map((v) => v.electionId)),
+    );
+
+    // 7️⃣ Load candidates
     const candidates = candidateIds.length
       ? await this.candidateRepo.find({
-          where: { candidateId: In(candidateIds) },
+          where: {
+            candidateId: In(candidateIds),
+          },
         })
       : [];
 
+    // 8️⃣ Load elections
+    const elections = electionIds.length
+      ? await this.electionRepo.find({
+          where: {
+            electionId: In(electionIds),
+          },
+        })
+      : [];
+
+    // 9️⃣ Candidate map
     const candidateMap = new Map<number, Candidate>(
       candidates.map((c) => [c.candidateId, c]),
     );
 
-    // 5️⃣ Build receipt items
+    // 🔥 NEW — Election map
+    const electionMap = new Map<number, Election>(
+      elections.map((e) => [e.electionId, e]),
+    );
+
+    // 🔟 Build receipt items
     const items: ReceiptItemDto[] = [];
 
     let itemsTotal = 0;
@@ -101,77 +175,118 @@ export class ReceiptsReadService {
 
     for (const vl of voteLogs) {
       const subTotal = Number(vl.subTotal || 0);
+
       itemsTotal += subTotal;
 
-      if ((vl.applyStatus || '').toUpperCase() === 'APPLIED') appliedTotal += subTotal;
-      if ((vl.applyStatus || '').toUpperCase() === 'SKIPPED') skippedTotal += subTotal;
+      if (
+        (vl.applyStatus || '').toUpperCase() === 'APPLIED'
+      ) {
+        appliedTotal += subTotal;
+      }
 
-      const candidate = candidateMap.get(vl.candidateId);
+      if (
+        (vl.applyStatus || '').toUpperCase() === 'SKIPPED'
+      ) {
+        skippedTotal += subTotal;
+      }
+
+      const candidate =
+        candidateMap.get(vl.candidateId);
+
+      const election =
+        electionMap.get(vl.electionId);
 
       items.push({
         cartItemId: vl.cartItemId ?? null,
+
         voteLogId: vl.voteLogId,
+
         election: {
           electionId: vl.electionId,
-          title: `Election ${vl.electionId}`, // optional: enrich later from ELECTIONS
+
+          // ✅ REAL TITLE FROM DB
+          title:
+            election?.title ??
+            `Election ${vl.electionId}`,
         },
+
         candidate: {
           candidateId: vl.candidateId,
-          name: candidate?.name ?? 'Unknown Candidate',
+
+          name:
+            candidate?.name ??
+            'Unknown Candidate',
         },
+
         voteQty: vl.voteQty,
+
         pricePerVote: vl.pricePerVote,
+
         subTotal: vl.subTotal,
+
         outcome: {
           applyStatus: vl.applyStatus,
-          skipReason: vl.skipReason ?? null,
+
+          skipReason:
+            vl.skipReason ?? null,
+
           createdAt: vl.createdAt,
         },
       });
     }
 
-    // 6️⃣ Final receipt DTO (same shape + pdfUrl)
+    // 1️⃣1️⃣ Final DTO
     const receiptDto = {
       lookupKey: reference,
+
       receiptId: reference,
+
       payment: {
         paystackRef: payment.paystackRef,
         status: payment.status,
         amount: payment.amount,
         paidAt: payment.paidAt,
       },
+
       cart: {
         cartId: cart.cartId,
         cartUuid: cart.cartUuid,
         status: cart.status,
         totalAmount: cart.totalAmount,
       },
+
       items,
+
       summary: {
         itemsTotal,
         appliedTotal,
         skippedTotal,
       },
+
       pdfUrl,
     };
 
-    // 7️⃣ Backfill/Update RECEIPTS (legacy-safe, idempotent)
-    // ✅ With OPTION 1, ReceiptsService must enforce immutability:
-    // - If existing receipt is FINAL => this call must become a no-op (except pdfHash if null)
-    // - If existing receipt is INITIATED => update it to final snapshot/status
+    // 1️⃣2️⃣ Snapshot backfill
     await this.receiptsService.createIfMissing({
       reference,
+
       paymentId: payment.paymentId,
+
       cartId: cart.cartId,
+
       status: payment.status as any,
+
       amount: Number(payment.amount),
+
       currency: 'NGN',
+
       pdfVersion: 'v1',
+
       pdfHash: null,
+
       snapshot: receiptDto,
     });
 
-    // Always return rebuilt receipt DTO
     return receiptDto;
   }
 }

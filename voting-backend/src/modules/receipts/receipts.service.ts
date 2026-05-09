@@ -243,15 +243,56 @@ export class ReceiptsService {
     return this.createIfMissingTx(this.receiptsRepo.manager, input);
   }
 
-  async getSnapshotDto(reference: string): Promise<any | null> {
-    const r = await this.findByReference(reference);
-    if (!r?.snapshotJson) return null;
-    try {
-      return JSON.parse(r.snapshotJson);
-    } catch {
-      return null;
-    }
+ async getSnapshotDto(reference: string): Promise<any | null> {
+  const r = await this.findByReference(reference);
+   console.log('RAW SNAPSHOT:', r?.snapshotJson); // 👈 ADD THIS
+  if (!r?.snapshotJson) return null;
+
+  let snapshot: any = {};
+
+  try {
+    snapshot =
+      typeof r.snapshotJson === 'string'
+        ? JSON.parse(r.snapshotJson)
+        : r.snapshotJson;
+  } catch {
+    return null;
   }
+
+  const items = Array.isArray(snapshot.items) ? snapshot.items : [];
+
+  const normalizedItems = items.map((it: any) => {
+    const pollTitle =
+      it.poll?.title ||
+      it.pollTitle ||
+      it.electionTitle ||
+      it.title ||
+      'Unknown Poll';
+
+    const nomineeName =
+      it.nominee?.name ||
+      it.nomineeName ||
+      it.candidateName ||
+      it.name ||
+      'Unknown Nominee';
+
+    return {
+      ...it,
+
+      // 🔥 FORCE STRUCTURE FOR FRONTEND
+      poll: { title: String(pollTitle) },
+      nominee: { name: String(nomineeName) },
+
+      voteQty: Number(it.voteQty || 0),
+      subTotal: Number(it.subTotal || 0),
+    };
+  });
+
+  return {
+    ...snapshot,
+    items: normalizedItems,
+  };
+}
 
   async updatePdfHash(reference: string, pdfHash: string): Promise<void> {
     const r = await this.findByReference(reference);

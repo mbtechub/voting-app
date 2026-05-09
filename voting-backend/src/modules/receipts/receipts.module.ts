@@ -6,7 +6,7 @@ import { ReceiptsService } from './receipts.service';
 import { ReceiptsReadService } from './receipts.read.service';
 import { ReceiptsPdfService } from './receipts.pdf.service';
 import { ReceiptsPublicController } from './receipts.public.controller';
-
+import { Election } from '../elections/entities/election.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { Cart } from '../cart/entities/cart.entity';
 import { VoteLog } from '../votes/entities/vote-log.entity';
@@ -20,6 +20,7 @@ import { Candidate } from '../candidates/entities/candidate.entity';
       Cart,
       VoteLog,
       Candidate,
+      Election,
     ]),
   ],
   controllers: [ReceiptsPublicController],
