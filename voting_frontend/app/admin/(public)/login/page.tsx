@@ -70,14 +70,23 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const who = (await whoamiRes.json().catch(() => ({}))) as WhoAmIStable;
-      const role = normalizeRole(who?.role);
+      const who = (await whoamiRes.json().catch(() => ({}))) as any;
 
-      if (role === 'SUPER_ADMIN') {
-        window.location.replace('/admin/dashboard');
-      } else {
-        window.location.replace('/admin/home');
-      }
+const role = normalizeRole(who?.role);
+
+const mustChangePassword =
+  who?.admin?.mustChangePassword === 'Y';
+
+if (mustChangePassword) {
+  window.location.replace('/admin/change-password');
+  return;
+}
+
+if (role === 'SUPER_ADMIN') {
+  window.location.replace('/admin/dashboard');
+} else {
+  window.location.replace('/admin/home');
+}
     } catch (err: any) {
       setError(err?.message || 'Login failed');
     } finally {

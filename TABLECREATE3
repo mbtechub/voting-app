@@ -598,16 +598,29 @@ VALUES (2, 'ADMIN', SYSDATE);
 --------------------------------------------------------
 
 INSERT INTO ADMINS
-    (ADMIN_ID, EMAIL, PASSWORD_HASH, ROLE_ID, IS_ACTIVE, CREATED_AT, LAST_LOGIN, USERNAME)
+(
+    ADMIN_ID,
+    EMAIL,
+    PASSWORD_HASH,
+    ROLE_ID,
+    IS_ACTIVE,
+    MUST_CHANGE_PASSWORD,
+    CREATED_AT,
+    LAST_LOGIN,
+    USERNAME
+)
 VALUES
-    (1,
-     'superadmin@yourapp.com',
-     '$2b$10$bAMkT1ruVVTnaVE7wBh9O.TAWlfgefkcX1pW9Jo/SxWrLEf.yjB4O',
-     1,
-     'Y',
-     TO_DATE('28-JAN-26', 'DD-MON-RR'),
-     NULL,
-     'Superadmin');
+(
+    1,
+    'superadmin@yourapp.com',
+    '$2b$10$bAMkT1ruVVTnaVE7wBh9O.TAWlfgefkcX1pW9Jo/SxWrLEf.yjB4O',
+    1,
+    'Y',
+    'Y',
+    TO_DATE('28-JAN-26', 'DD-MON-RR'),
+    NULL,
+    'Superadmin'
+);
 
 COMMIT;
 

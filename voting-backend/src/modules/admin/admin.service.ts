@@ -782,8 +782,24 @@ constructor(
     try {
       await this.dataSource.query(
         `
-        INSERT INTO ADMINS (USERNAME, EMAIL, PASSWORD_HASH, ROLE_ID, IS_ACTIVE, CREATED_AT)
-        VALUES (:1, :2, :3, :4, :5, SYSDATE)
+        INSERT INTO ADMINS (
+  USERNAME,
+  EMAIL,
+  PASSWORD_HASH,
+  ROLE_ID,
+  IS_ACTIVE,
+  MUST_CHANGE_PASSWORD,
+  CREATED_AT
+)
+VALUES (
+  :1,
+  :2,
+  :3,
+  :4,
+  :5,
+  'Y',
+  SYSDATE
+)
         `,
         [username, email, passwordHash, roleId, isActive],
       );
@@ -901,8 +917,10 @@ constructor(
     await this.dataSource.query(
       `
       UPDATE ADMINS
-      SET PASSWORD_HASH = :1
-      WHERE ADMIN_ID = :2
+SET
+  PASSWORD_HASH = :1,
+  MUST_CHANGE_PASSWORD = 'Y'
+WHERE ADMIN_ID = :2
       `,
       [passwordHash, adminId],
     );

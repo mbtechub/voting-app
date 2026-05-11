@@ -82,23 +82,37 @@ export async function GET() {
       ok: true,
       role, // ✅ ALWAYS: ADMIN | SUPER_ADMIN
       admin: raw?.admin
-        ? {
-            adminId: raw.admin.adminId,
-            email: raw.admin.email,
-            username: raw.admin.username,
-            firstName:
-              raw.admin.firstName ??
-              raw.admin.first_name ??
-              raw.admin.FIRST_NAME ??
-              null,
-            lastName:
-              raw.admin.lastName ??
-              raw.admin.last_name ??
-              raw.admin.LAST_NAME ??
-              null,
-            isActive: raw.admin.isActive,
-          }
-        : null,
+        
+  ? {
+      adminId: raw.admin.adminId,
+
+      email: raw.admin.email,
+
+      username: raw.admin.username,
+
+      firstName:
+        raw.admin.firstName ??
+        raw.admin.first_name ??
+        raw.admin.FIRST_NAME ??
+        null,
+
+      lastName:
+        raw.admin.lastName ??
+        raw.admin.last_name ??
+        raw.admin.LAST_NAME ??
+        null,
+
+      isActive: raw.admin.isActive,
+
+      role:
+        raw.admin.role ??
+        role,
+
+      mustChangePassword:
+        raw.admin.mustChangePassword ??
+        'Y',
+    }
+  : null,
     };
 
     return NextResponse.json(stable, {
