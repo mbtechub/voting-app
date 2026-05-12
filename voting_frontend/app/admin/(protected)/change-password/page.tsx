@@ -33,6 +33,7 @@ export default function ChangePasswordPage() {
       setError(
         'Passwords do not match.',
       );
+
       return;
     }
 
@@ -68,8 +69,18 @@ export default function ChangePasswordPage() {
         );
       }
 
-      window.location.assign(
-        '/admin/dashboard',
+      // 🔒 DESTROY CURRENT SESSION
+      await fetch(
+        '/api/admin/auth/logout',
+        {
+          method: 'POST',
+          credentials: 'include',
+        },
+      );
+
+      // 🔒 FORCE FRESH LOGIN
+      window.location.replace(
+        '/admin/login?passwordChanged=1',
       );
     } catch (err: any) {
       setError(
