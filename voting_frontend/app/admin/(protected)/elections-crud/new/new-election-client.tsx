@@ -248,7 +248,6 @@ export default function NewElectionClient() {
                   <option value="DRAFT">DRAFT</option>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="ENDED">ENDED</option>
-                  <option value="DISABLED">DISABLED</option>
                 </select>
               </div>
             </div>

@@ -66,7 +66,7 @@ export class AuthService {
 
     if (!isActive) {
       throw new ForbiddenException(
-        'Admin account is disabled',
+        'Account is disabled Contact Superadmin',
       );
     }
 

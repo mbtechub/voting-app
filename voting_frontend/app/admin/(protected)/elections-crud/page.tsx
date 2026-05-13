@@ -187,82 +187,99 @@ export default async function ElectionsCrudPage({
             </thead>
 
             <tbody>
-              {rows.length ? (
-                rows.map((r) => (
-                  <tr
-                    key={r.electionId}
-                    className="group transition hover:bg-slate-50/70"
-                  >
-                    {/* TITLE */}
-                    <td className="border-b border-slate-100 px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-semibold text-slate-600">
-                          {r.title?.charAt(0)}
-                        </div>
+  {rows.length ? (
+    rows.map((r) => (
+      <tr
+        key={r.electionId}
+        className="group transition hover:bg-slate-50/70"
+      >
 
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {r.title}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Poll item
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+        {/* TITLE */}
+        <td className="border-b border-slate-100 px-4 py-4 w-[38%] min-w-[280px] max-w-[420px]">
 
-                    {/* STATUS */}
-                    <td className="border-b border-slate-100 px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
-                          r.status,
-                        )}`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
+          <div className="flex min-w-0 items-center gap-3">
 
-                    {/* START */}
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                      {formatDate(r.startDate)}
-                    </td>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-semibold text-slate-600">
+              {r.title?.charAt(0)}
+            </div>
 
-                    {/* END */}
-                    <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                      {formatDate(r.endDate)}
-                    </td>
+            <div className="min-w-0 flex-1">
 
-                    {/* PRICE */}
-                    <td className="border-b border-slate-100 px-4 py-4">
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                        {formatPrice(r.defaultVotePrice)}
-                      </span>
-                    </td>
+              <p className="truncate text-sm font-semibold text-slate-900">
+                {r.title}
+              </p>
 
-                    {/* ACTIONS */}
-                    <td className="border-b border-slate-100 px-4 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 transition duration-200 group-hover:opacity-100">
-                        <Link
-                          href={`/admin/elections-crud/${r.electionId}`}
-                          className="rounded-xl border px-3 py-1.5 text-xs hover:bg-slate-100"
-                        >
-                          Edit
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-12 text-center text-sm text-slate-500"
-                  >
-                    No polls found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
+              <p className="truncate text-xs text-slate-500">
+                Poll item
+              </p>
+
+            </div>
+
+          </div>
+
+        </td>
+
+        {/* STATUS */}
+        <td className="border-b border-slate-100 px-4 py-4 whitespace-nowrap">
+
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
+              r.status,
+            )}`}
+          >
+            {r.status}
+          </span>
+
+        </td>
+
+        {/* START */}
+        <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700 whitespace-nowrap">
+          {formatDate(r.startDate)}
+        </td>
+
+        {/* END */}
+        <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700 whitespace-nowrap">
+          {formatDate(r.endDate)}
+        </td>
+
+        {/* PRICE */}
+        <td className="border-b border-slate-100 px-4 py-4 whitespace-nowrap">
+
+          <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            {formatPrice(r.defaultVotePrice)}
+          </span>
+
+        </td>
+
+        {/* ACTIONS */}
+        <td className="border-b border-slate-100 px-4 py-4 text-right whitespace-nowrap min-w-[130px]">
+
+          <div className="flex items-center justify-end gap-2">
+
+            <Link
+              href={`/admin/elections-crud/${r.electionId}`}
+              className="min-w-[80px] shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-center text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              Edit
+            </Link>
+
+          </div>
+
+        </td>
+
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td
+        colSpan={6}
+        className="px-4 py-12 text-center text-sm text-slate-500"
+      >
+        No polls found.
+      </td>
+    </tr>
+  )}
+</tbody>
           </table>
         </div>
       </div>
