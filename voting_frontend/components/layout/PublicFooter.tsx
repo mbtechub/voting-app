@@ -8,7 +8,7 @@ export default function PublicFooter() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid gap-8 sm:grid-cols-2 md:grid-cols-4">
 
         {/* Brand */}
-        <div>
+        {/*<div>
           <h3 className="text-lg font-bold tracking-tight">Voting</h3>
           <p className="text-sm text-slate-400 mt-3 leading-relaxed">
             A secure digital polling platform for participating in polls,
@@ -37,16 +37,12 @@ export default function PublicFooter() {
                 Cart
               </Link>
             </li>
-            <li>
-              <Link href="/receipt" className="hover:text-white transition">
-                Verify Receipt
-              </Link>
-            </li>
+            
           </ul>
         </div>
 
         {/* Platform */}
-        <div>
+        {/*<div>
           <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-slate-300">
             Platform
           </h4>
@@ -80,10 +76,12 @@ export default function PublicFooter() {
           </ul>
         </div>
       </div>
+      
 
       {/* Bottom */}
       <div className="border-t border-slate-800 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
-        © {new Date().getFullYear()} Mide Bash. All rights reserved.
+        © {new Date().getFullYear()} Business Automation Management System 
+        <p>Mide Bash</p>
       </div>
     </footer>
   );

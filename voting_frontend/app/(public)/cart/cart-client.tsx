@@ -108,12 +108,76 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
   // ✅ NOW SAFE TO GUARD
 
-  if (!cart && loadingInit) {
+  {/*if (!cart && loadingInit) {
     return <div className="p-6">Loading cart...</div>;
-  }
+  } */}
+   //or use//
+if (!cart && loadingInit) {
+  return (
+    <div className="space-y-6">
+
+      {/* Skeleton Loader */}
+      <div className="space-y-6 animate-pulse">
+
+        {/* Poll Header */}
+        <div className="h-5 w-40 rounded bg-slate-200" />
+
+        {/* Item */}
+        <div className="rounded-2xl border bg-white p-4 shadow-sm flex items-center justify-between gap-4">
+
+          <div className="flex items-center gap-3 flex-1">
+
+            <div className="w-12 h-12 rounded-xl bg-slate-200" />
+
+            <div className="space-y-2">
+              <div className="h-4 w-32 rounded bg-slate-200" />
+              <div className="h-3 w-20 rounded bg-slate-100" />
+            </div>
+
+          </div>
+
+          <div className="h-5 w-16 rounded bg-slate-200" />
+
+        </div>
+
+        {/* Item */}
+        <div className="rounded-2xl border bg-white p-4 shadow-sm flex items-center justify-between gap-4">
+
+          <div className="flex items-center gap-3 flex-1">
+
+            <div className="w-12 h-12 rounded-xl bg-slate-200" />
+
+            <div className="space-y-2">
+              <div className="h-4 w-40 rounded bg-slate-200" />
+              <div className="h-3 w-24 rounded bg-slate-100" />
+            </div>
+
+          </div>
+
+          <div className="h-5 w-20 rounded bg-slate-200" />
+
+        </div>
+
+        {/* Total */}
+        <div className="rounded-2xl border bg-white p-4 shadow-sm flex justify-between">
+
+          <div className="h-4 w-16 rounded bg-slate-200" />
+
+          <div className="h-5 w-24 rounded bg-slate-200" />
+
+        </div>
+
+        {/* Button */}
+        <div className="h-12 rounded-xl bg-slate-300" />
+
+      </div>
+
+    </div>
+  );
+}
 
   if (!cart) {
-    return <div className="p-6">No cart found.</div>;
+    return <div className="p-6">No Active Cart.</div>;
   }
 
   const c = cart;

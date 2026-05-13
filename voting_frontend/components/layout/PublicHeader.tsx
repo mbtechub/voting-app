@@ -40,16 +40,12 @@ export default function PublicHeader() {
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-700">
-          <Link href="/vote" className="hover:text-black">
+          <Link href="/" className="hover:text-black">
             Home
           </Link>
 
           <Link href="/vote" className="hover:text-black">
             Polls
-          </Link>
-
-          <Link href="/receipt" className="hover:text-black">
-            Verify Receipt
           </Link>
 
           <ViewCartButton />
@@ -86,9 +82,6 @@ export default function PublicHeader() {
             Polls
           </Link>
 
-          <Link href="/receipt" onClick={closeMenu}>
-            Verify Receipt
-          </Link>
 
           <Link href="/cart" onClick={closeMenu}>
             Cart
