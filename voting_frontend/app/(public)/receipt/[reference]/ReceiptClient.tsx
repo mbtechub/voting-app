@@ -374,7 +374,8 @@ const nomineeName =
 </div>
 
 <p className="text-center text-xs text-gray-400 mt-8">
-  MIDE BASH TECHNOLOGY GROUP
+  <p>Business Automation Management System.</p>
+        <p>Mide Bash</p>
 </p>
     </div>
   );
