@@ -494,7 +494,6 @@ export default function AdminDashboardPage() {
         <h1 className="mt-4 text-3xl font-bold">Overview</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100 sm:text-base">
           High-level metrics for polls, payments, revenue, and nominee activity.
-          No per-nominee financial details are shown.
         </p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -555,7 +554,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <p className="mt-4 text-sm text-slate-500">
-          Operational health for carts and payment outcomes across recent periods.
+          Operational history for carts and payment outcomes across recent periods.
         </p>
       </Section>
 
@@ -614,7 +613,7 @@ export default function AdminDashboardPage() {
         </DataTable>
 
         <p className="mt-4 text-sm text-slate-500">
-          If backend revenue is not yet available, revenue can show ₦0 while vote totals remain correct.
+          If revenue is not yet available, revenue can show ₦0 while vote totals remain correct.
         </p>
       </Section>
 
@@ -648,7 +647,7 @@ export default function AdminDashboardPage() {
         </DataTable>
 
         <p className="mt-4 text-sm text-slate-500">
-          Only vote counts are shown to preserve the no per-nominee financials rule.
+          Only vote counts are shown.
         </p>
       </Section>
 

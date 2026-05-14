@@ -241,34 +241,106 @@ function normalizeActionFilter(value: string) {
   return value.trim().replace(/\s+/g, '_');
 }
 
-function AuditMobileCard({ row }: { row: AuditRow }) {
+function AuditMobileCard({
+  row,
+}: {
+  row: AuditRow;
+}) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold text-slate-900">{row.adminUsername || '—'}</p>
-          <p className="mt-1 text-xs text-slate-500">{fmtDate(row.createdAt)}</p>
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+
+      {/* TOP SECTION */}
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-4 sm:px-5">
+
+        <div className="min-w-0 flex-1">
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-sm font-bold text-slate-700">
+              {row.adminUsername
+                ?.charAt(0)
+                ?.toUpperCase() || 'A'}
+            </div>
+
+            <div className="min-w-0">
+
+              <p className="truncate text-sm font-semibold text-slate-900">
+                {row.adminUsername ||
+                  'Unknown Admin'}
+              </p>
+
+              <p className="mt-0.5 text-xs text-slate-500">
+                {fmtDate(
+                  row.createdAt,
+                )}
+              </p>
+
+            </div>
+
+          </div>
+
         </div>
 
-        <Pill
-          text={row.status || 'UNKNOWN'}
-          className={statusBadge(row.status)}
-        />
+        <div className="shrink-0">
+
+          <Pill
+            text={
+              row.status ||
+              'UNKNOWN'
+            }
+            className={statusBadge(
+              row.status,
+            )}
+          />
+
+        </div>
+
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Pill
-          text={row.module || 'UNKNOWN'}
-          className={moduleBadge(row.module)}
-        />
-        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
-          {formatTarget(row.module, row.target)}
-        </span>
+      {/* BODY */}
+      <div className="space-y-4 px-4 py-4 sm:px-5">
+
+        {/* MODULE + TARGET */}
+        <div className="flex flex-wrap items-center gap-2">
+
+          <Pill
+            text={
+              row.module ||
+              'UNKNOWN'
+            }
+            className={moduleBadge(
+              row.module,
+            )}
+          />
+
+          <span className="inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+
+            <span className="truncate">
+              {formatTarget(
+                row.module,
+                row.target,
+              )}
+            </span>
+
+          </span>
+
+        </div>
+
+        {/* DETAILS */}
+        <div className="rounded-2xl bg-slate-50 p-3">
+
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Details
+          </div>
+
+          <div className="mt-2 text-sm text-slate-700">
+            <DetailsCell row={row} />
+          </div>
+
+        </div>
+
       </div>
 
-      <div className="mt-4">
-        <DetailsCell row={row} />
-      </div>
     </div>
   );
 }
@@ -334,190 +406,272 @@ export default function AuditClient() {
     load('?limit=50');
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+ useEffect(() => {
+  load();
+}, []);
 
-  return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-5">
-          <div className="grid gap-4 xl:grid-cols-[160px_220px_260px_auto] xl:items-end">
-            <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Limit
-              </label>
-              <input
-                value={limit}
-                onChange={(e) => setLimit(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                placeholder="50"
-              />
-            </div>
+return (
+  <div className="space-y-6">
 
-            <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Admin
-              </label>
-              <input
-                value={admin}
-                onChange={(e) => setAdmin(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                placeholder="superadmin"
-              />
-            </div>
+    {/* FILTER / ACTION CARD */}
+    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-7">
 
-            <div>
-              <label className="block text-sm font-medium text-slate-800">
-                Action
-              </label>
-              <input
-                value={action}
-                onChange={(e) => setAction(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-                placeholder="Admin Role Change"
-              />
-            </div>
+      <div className="flex flex-col gap-6">
 
-            <div className="flex flex-wrap gap-3 xl:justify-start">
-              <button
-                onClick={() => load()}
-                disabled={loading}
-                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Loading…' : 'Apply Filters'}
-              </button>
+        {/* FILTER GRID */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[160px_220px_260px_auto] xl:items-end">
 
-              <button
-                type="button"
-                onClick={handleReset}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Reset
-              </button>
-            </div>
+          {/* LIMIT */}
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-slate-800">
+              Limit
+            </label>
+
+            <input
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              placeholder="50"
+            />
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-slate-500">
-              {rows.length ? `${rows.length} log(s)` : 'No logs loaded yet'}
-            </div>
+          {/* ADMIN */}
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-slate-800">
+              Admin
+            </label>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => exportLogs('csv')}
-                className={exportButtonClass()}
-              >
-                Export CSV
-              </button>
-
-              <button
-                type="button"
-                onClick={() => exportLogs('xlsx')}
-                className={exportButtonClass()}
-              >
-                Export XLSX
-              </button>
-
-              <button
-                type="button"
-                onClick={() => exportLogs('pdf')}
-                className={exportButtonClass()}
-              >
-                Export PDF
-              </button>
-            </div>
+            <input
+              value={admin}
+              onChange={(e) => setAdmin(e.target.value)}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              placeholder="superadmin"
+            />
           </div>
+
+          {/* ACTION */}
+          <div className="min-w-0">
+            <label className="block text-sm font-medium text-slate-800">
+              Action
+            </label>
+
+            <input
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              placeholder="Admin Role Change"
+            />
+          </div>
+
+          {/* FILTER BUTTONS */}
+          <div className="flex flex-col gap-3 sm:flex-row xl:justify-start">
+
+            <button
+              onClick={() => load()}
+              disabled={loading}
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Loading…' : 'Apply Filters'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Reset
+            </button>
+
+          </div>
+
         </div>
 
-        {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-            {error}
+        {/* BOTTOM BAR */}
+        <div className="flex flex-col gap-4 border-t border-slate-100 pt-4 lg:flex-row lg:items-center lg:justify-between">
+
+          <div className="text-sm font-medium text-slate-500">
+            {rows.length
+              ? `${rows.length} log(s)`
+              : 'No logs loaded yet'}
           </div>
-        ) : null}
-      </div>
 
-      <div className="grid gap-4 lg:hidden">
-        {!loading && rows.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500 shadow-sm">
-            No audit logs found.
+          {/* EXPORT BUTTONS */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+            <button
+              type="button"
+              onClick={() => exportLogs('csv')}
+              className={`${exportButtonClass()} h-11 whitespace-nowrap`}
+            >
+              Export CSV
+            </button>
+
+            <button
+              type="button"
+              onClick={() => exportLogs('xlsx')}
+              className={`${exportButtonClass()} h-11 whitespace-nowrap`}
+            >
+              Export XLSX
+            </button>
+
+            <button
+              type="button"
+              onClick={() => exportLogs('pdf')}
+              className={`${exportButtonClass()} h-11 whitespace-nowrap`}
+            >
+              Export PDF
+            </button>
+
           </div>
-        ) : null}
 
-        {rows.map((row) => (
-          <AuditMobileCard key={row.auditId} row={row} />
-        ))}
-      </div>
-
-      <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse">
-            <thead className="bg-slate-50">
-              <tr>
-                {['Time', 'Admin', 'Module', 'Target', 'Status', 'Details'].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-sm font-semibold text-slate-700"
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-
-            <tbody>
-              {!loading && rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-8 text-sm text-slate-500"
-                  >
-                    No audit logs found.
-                  </td>
-                </tr>
-              ) : null}
-
-              {rows.map((r) => (
-                <tr key={r.auditId} className="align-top">
-                  <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    {fmtDate(r.createdAt)}
-                  </td>
-
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm font-semibold text-slate-900">
-                    {r.adminUsername || '—'}
-                  </td>
-
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm">
-                    <Pill
-                      text={r.module || 'UNKNOWN'}
-                      className={moduleBadge(r.module)}
-                    />
-                  </td>
-
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
-                    {formatTarget(r.module, r.target)}
-                  </td>
-
-                  <td className="border-b border-slate-100 px-4 py-4 text-sm">
-                    {r.status ? (
-                      <Pill text={r.status} className={statusBadge(r.status)} />
-                    ) : (
-                      <span className="text-slate-400">—</span>
-                    )}
-                  </td>
-
-                  <td className="border-b border-slate-100 px-4 py-4">
-                    <DetailsCell row={r} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
+
       </div>
+
+      {/* ERROR */}
+      {error ? (
+        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      ) : null}
+
     </div>
-  );
+
+    {/* MOBILE CARDS */}
+    <div className="grid gap-4 lg:hidden">
+
+      {!loading && rows.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-8 text-sm text-slate-500 shadow-sm">
+          No audit logs found.
+        </div>
+      ) : null}
+
+      {rows.map((row) => (
+        <AuditMobileCard
+          key={row.auditId}
+          row={row}
+        />
+      ))}
+
+    </div>
+
+    {/* DESKTOP TABLE */}
+    <div className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:block">
+
+      <div className="w-full overflow-x-auto">
+
+        <table className="w-full min-w-[1100px] border-collapse">
+
+          <thead className="bg-slate-50">
+            <tr>
+
+              {[
+                'Time',
+                'Admin',
+                'Module',
+                'Target',
+                'Status',
+                'Details',
+              ].map((h) => (
+                <th
+                  key={h}
+                  className="whitespace-nowrap border-b border-slate-200 px-4 py-4 text-left text-sm font-semibold text-slate-700"
+                >
+                  {h}
+                </th>
+              ))}
+
+            </tr>
+          </thead>
+
+          <tbody>
+
+            {!loading &&
+            rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-4 py-10 text-sm text-slate-500"
+                >
+                  No audit logs found.
+                </td>
+              </tr>
+            ) : null}
+
+            {rows.map((r) => (
+              <tr
+                key={r.auditId}
+                className="align-top transition hover:bg-slate-50/70"
+              >
+
+                {/* TIME */}
+                <td className="whitespace-nowrap border-b border-slate-100 px-4 py-4 text-sm text-slate-700">
+                  {fmtDate(r.createdAt)}
+                </td>
+
+                {/* ADMIN */}
+                <td className="border-b border-slate-100 px-4 py-4 text-sm font-semibold text-slate-900 whitespace-nowrap">
+                  {r.adminUsername ||
+                    '—'}
+                </td>
+
+                {/* MODULE */}
+                <td className="border-b border-slate-100 px-4 py-4 text-sm whitespace-nowrap">
+
+                  <Pill
+                    text={
+                      r.module ||
+                      'UNKNOWN'
+                    }
+                    className={moduleBadge(
+                      r.module,
+                    )}
+                  />
+
+                </td>
+
+                {/* TARGET */}
+                <td className="border-b border-slate-100 px-4 py-4 text-sm text-slate-700 min-w-[220px]">
+                  {formatTarget(
+                    r.module,
+                    r.target,
+                  )}
+                </td>
+
+                {/* STATUS */}
+                <td className="border-b border-slate-100 px-4 py-4 text-sm whitespace-nowrap">
+
+                  {r.status ? (
+                    <Pill
+                      text={r.status}
+                      className={statusBadge(
+                        r.status,
+                      )}
+                    />
+                  ) : (
+                    <span className="text-slate-400">
+                      —
+                    </span>
+                  )}
+
+                </td>
+
+                {/* DETAILS */}
+                <td className="border-b border-slate-100 px-4 py-4 min-w-[320px]">
+                  <DetailsCell row={r} />
+                </td>
+
+              </tr>
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+);
 }
