@@ -57,43 +57,58 @@ export default async function ProtectedAdminLayout({
 
               <div className="flex min-h-full flex-col p-4 sm:p-5">
 
+                {/* TOP BRAND CARD */}
                 <div className="mb-5 rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-blue-800 p-5 text-white shadow-xl shadow-blue-950/10">
 
                   <div className="flex items-center gap-3">
 
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-sm font-bold tracking-wide backdrop-blur">
-                      VP
+                    {/* LOGO */}
+                    <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
+
+                      {process.env.NEXT_PUBLIC_LOGO_URL ? (
+
+                        <img
+                          src={process.env.NEXT_PUBLIC_LOGO_URL}
+                          alt="Logo"
+                          className="h-full w-full object-cover bg-white p-1"
+                        />
+
+                      ) : (
+
+                        <span className="text-sm font-bold tracking-wide text-white">
+                          VP
+                        </span>
+
+                      )}
+
                     </div>
 
+                    {/* TEXT */}
                     <div className="min-w-0">
 
-                      <p className="truncate text-sm font-semibold tracking-[0.18em] text-blue-50">
-                        VOTING PLATFORM
-                      </p>
-
-                      <p className="mt-1 text-xs text-blue-100/80">
+                      <p className="truncate text-base font-semibold text-white">
                         Admin Console
                       </p>
 
+                      <p className="mt-1 text-xs text-blue-100/80">
+                        Secure Management Workspace
+                      </p>
+
                     </div>
-                  </div>
-
-                  <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-
-                    <p className="text-xs uppercase tracking-[0.2em] text-blue-100/70">
-                      Workspace
-                    </p>
 
                   </div>
+
                 </div>
 
+                {/* SIDEBAR NAV */}
                 <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden">
 
-                  {/* 🔥 CONTEXT SIDEBAR */}
                   <AdminSidebar />
 
                 </div>
+
               </div>
+
             </aside>
 
             {/* MAIN CONTENT */}
@@ -113,7 +128,7 @@ export default async function ProtectedAdminLayout({
                       <div className="min-w-0">
 
                         <p className="truncate text-sm font-semibold text-slate-900">
-                          Voting Platform Admin
+                          Platform Executive Dashboard
                         </p>
 
                         <p className="hidden text-xs text-slate-500 sm:block">
@@ -122,15 +137,17 @@ export default async function ProtectedAdminLayout({
                         </p>
 
                       </div>
+
                     </div>
 
                     <div className="hidden shrink-0 lg:flex">
 
-                      {/* 🔥 LOGOUT BUTTON */}
                       <AdminDesktopLogoutButton />
 
                     </div>
+
                   </div>
+
                 </div>
 
                 {/* PAGE CONTENT */}
@@ -145,8 +162,11 @@ export default async function ProtectedAdminLayout({
                         {children}
 
                       </div>
+
                     </div>
+
                   </div>
+
                 </div>
 
                 {/* FOOTER */}
@@ -155,11 +175,17 @@ export default async function ProtectedAdminLayout({
                   <AdminFooter />
 
                 </div>
+
               </div>
+
             </main>
+
           </div>
+
         </div>
+
       </div>
+
     </AdminAuthProvider>
   );
 }

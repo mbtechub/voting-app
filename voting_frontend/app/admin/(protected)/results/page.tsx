@@ -43,41 +43,68 @@ export default function AdminResultsPage() {
 
   const selectedElectionId = useMemo(() => electionId, [electionId]);
 
-  /* ================= LOAD ELECTIONS ================= */
+ /* ================= LOAD ELECTIONS ================= */
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingElections(true);
+useEffect(() => {
+  let cancelled = false;
 
-    fetch('/api/admin/elections/financials', {
-      method: 'GET',
-      cache: 'no-store',
-      credentials: 'include', // ✅ FIXED
-      headers: {
-        Accept: 'application/json', // ✅ FIXED
-      },
+  setLoadingElections(true);
+
+  fetch('/api/admin/elections/financials', {
+    method: 'GET',
+    cache: 'no-store',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+    },
+  })
+    .then(async (res) => {
+      const data = await res
+        .json()
+        .catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message ||
+            `Failed (${res.status})`,
+        );
+      }
+
+      return data;
     })
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.message || `Failed (${res.status})`);
-        return data;
-      })
-      .then((rows: any[]) => {
-        if (cancelled) return;
-        const list = (rows || []).map((r) => ({
-          electionId: Number(r.electionId),
-          title: String(r.title),
-        }));
-        setElections(list);
-        if (list.length && electionId === null) setElectionId(list[0].electionId);
-      })
-      .catch((e) => !cancelled && setError(e.message))
-      .finally(() => !cancelled && setLoadingElections(false));
+    .then((rows: any[]) => {
+      if (cancelled) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      const list = (rows || []).map(
+        (r) => ({
+          electionId: Number(
+            r.electionId,
+          ),
+
+          title: String(r.title),
+        }),
+      );
+
+      setElections(list);
+
+      // ✅ DO NOT AUTO-SELECT FIRST POLL
+      setElectionId(null);
+    })
+    .catch(
+      (e) =>
+        !cancelled &&
+        setError(e.message),
+    )
+    .finally(() => {
+      if (!cancelled) {
+        setLoadingElections(false);
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   /* ================= LOAD RESULTS ================= */
 
@@ -89,9 +116,9 @@ export default function AdminResultsPage() {
       const res = await fetch(`/api/admin/results?electionId=${eid}`, {
         method: 'GET',
         cache: 'no-store',
-        credentials: 'include', // ✅ FIXED
+        credentials: 'include', // 
         headers: {
-          Accept: 'application/json', // ✅ FIXED
+          Accept: 'application/json', // 
         },
       });
 
@@ -169,20 +196,46 @@ export default function AdminResultsPage() {
             </label>
 
             <select
-              value={electionId ?? ''}
-              onChange={(e) => setElectionId(Number(e.target.value))}
-              disabled={loadingElections || !elections.length}
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            >
-              {loadingElections && <option>Loading…</option>}
+  value={electionId ?? ''}
+  onChange={(e) =>
+    setElectionId(
+      e.target.value
+        ? Number(e.target.value)
+        : null,
+    )
+  }
+  disabled={
+    loadingElections ||
+    !elections.length
+  }
+  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+>
 
-              {!loadingElections &&
-                elections.map((e) => (
-                  <option key={e.electionId} value={e.electionId}>
-                    {e.title} (ID: {e.electionId})
-                  </option>
-                ))}
-            </select>
+  {loadingElections && (
+    <option value="">
+      Loading…
+    </option>
+  )}
+
+  {!loadingElections && (
+    <option value="">
+      Select a Poll
+    </option>
+  )}
+
+  {!loadingElections &&
+    elections.map((e) => (
+      <option
+        key={e.electionId}
+        value={e.electionId}
+      >
+        {e.title} (ID:{' '}
+        {e.electionId})
+      </option>
+    ))}
+
+</select>
+            
           </div>
 
           <div className="flex flex-col gap-3 lg:justify-end">
@@ -207,7 +260,7 @@ export default function AdminResultsPage() {
                 Download CSV
               </a>
 
-              <a
+              {/*<a
                 href={exportXlsxHref}
                 onClick={(e) => {
                   if (!selectedElectionId) e.preventDefault();
@@ -215,8 +268,9 @@ export default function AdminResultsPage() {
                 className={getExportLinkClass(!selectedElectionId)}
               >
                 Download XLSX
-              </a>
+              </a>*/}
 
+              {/*
               <a
                 href={exportPdfHref}
                 onClick={(e) => {
@@ -225,7 +279,7 @@ export default function AdminResultsPage() {
                 className={getExportLinkClass(!selectedElectionId)}
               >
                 Download PDF
-              </a>
+              </a>*/}
             </div>
 
             <label className="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -306,12 +360,12 @@ export default function AdminResultsPage() {
               <a href={exportAllCsvHref} className={getExportLinkClass(false)}>
                 Export ALL (CSV)
               </a>
-              <a href={exportAllXlsxHref} className={getExportLinkClass(false)}>
+              {/*<a href={exportAllXlsxHref} className={getExportLinkClass(false)}>
                 Export ALL (XLSX)
               </a>
               <a href={exportAllPdfHref} className={getExportLinkClass(false)}>
                 Export ALL (PDF)
-              </a>
+              </a>*/}
             </div>
           </div>
 
@@ -327,12 +381,12 @@ export default function AdminResultsPage() {
             <div className="mt-4 flex flex-wrap gap-3">
               <a href={winnersAllCsvHref} className={getExportLinkClass(false)}>
                 Winners (CSV)
-              </a>
+             {/* </a>
               <a href={winnersAllXlsxHref} className={getExportLinkClass(false)}>
                 Winners (XLSX)
               </a>
               <a href={winnersAllPdfHref} className={getExportLinkClass(false)}>
-                Winners (PDF)
+                Winners (PDF)*/}
               </a>
             </div>
           </div>
