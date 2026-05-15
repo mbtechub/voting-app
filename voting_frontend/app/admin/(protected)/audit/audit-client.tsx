@@ -395,9 +395,70 @@ export default function AuditClient() {
   }
 }
 
-  function exportLogs(format: 'csv' | 'xlsx' | 'pdf') {
-    window.location.href = `/api/admin/audit/export?format=${format}`;
+  async function exportLogs(
+  format: 'csv' | 'xlsx' | 'pdf',
+) {
+  try {
+    const res =
+      await fetch(
+        `/api/admin/audit/export?format=${format}`,
+        {
+          method: 'GET',
+
+          credentials:
+            'include',
+
+          cache:
+            'no-store',
+        },
+      );
+
+    if (!res.ok) {
+      throw new Error(
+        `Export failed (${res.status})`,
+      );
+    }
+
+    const blob =
+      await res.blob();
+
+    const url =
+      window.URL.createObjectURL(
+        blob,
+      );
+
+    const a =
+      document.createElement(
+        'a',
+      );
+
+    a.href = url;
+
+    a.download =
+      `audit_logs.${format}`;
+
+    document.body.appendChild(
+      a,
+    );
+
+    a.click();
+
+    a.remove();
+
+    window.URL.revokeObjectURL(
+      url,
+    );
+  } catch (err) {
+    console.error(
+      'Export failed:',
+      err,
+    );
+
+    alert(
+      'Failed to export logs',
+    );
   }
+}
 
   function handleReset() {
     setLimit('50');
@@ -496,33 +557,42 @@ return (
           </div>
 
           {/* EXPORT BUTTONS */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
-            <button
-              type="button"
-              onClick={() => exportLogs('csv')}
-              className={`${exportButtonClass()} h-11 whitespace-nowrap`}
-            >
-              Export CSV
-            </button>
+  <button
+    type="button"
+    onClick={async () =>
+      await exportLogs('csv')
+    }
+    className={`${exportButtonClass()} h-11 whitespace-nowrap`}
+  >
+    Export CSV
+  </button>
 
-            <button
-              type="button"
-              onClick={() => exportLogs('xlsx')}
-              className={`${exportButtonClass()} h-11 whitespace-nowrap`}
-            >
-              Export XLSX
-            </button>
+  {/* Uncomment later if needed */}
+  
+  <button
+    type="button"
+    onClick={async () =>
+      await exportLogs('xlsx')
+    }
+    className={`${exportButtonClass()} h-11 whitespace-nowrap`}
+  >
+    Export XLSX
+  </button>
 
-            <button
-              type="button"
-              onClick={() => exportLogs('pdf')}
-              className={`${exportButtonClass()} h-11 whitespace-nowrap`}
-            >
-              Export PDF
-            </button>
+  <button
+    type="button"
+    onClick={async () =>
+      await exportLogs('pdf')
+    }
+    className={`${exportButtonClass()} h-11 whitespace-nowrap`}
+  >
+    Export PDF
+  </button>
+  
 
-          </div>
+</div>
 
         </div>
 

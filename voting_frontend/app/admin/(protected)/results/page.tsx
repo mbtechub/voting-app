@@ -260,7 +260,7 @@ useEffect(() => {
                 Download CSV
               </a>
 
-              {/*<a
+              <a
                 href={exportXlsxHref}
                 onClick={(e) => {
                   if (!selectedElectionId) e.preventDefault();
@@ -268,9 +268,9 @@ useEffect(() => {
                 className={getExportLinkClass(!selectedElectionId)}
               >
                 Download XLSX
-              </a>*/}
+              </a>
 
-              {/*
+              
               <a
                 href={exportPdfHref}
                 onClick={(e) => {
@@ -279,7 +279,7 @@ useEffect(() => {
                 className={getExportLinkClass(!selectedElectionId)}
               >
                 Download PDF
-              </a>*/}
+              </a>
             </div>
 
             <label className="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -360,12 +360,12 @@ useEffect(() => {
               <a href={exportAllCsvHref} className={getExportLinkClass(false)}>
                 Export ALL (CSV)
               </a>
-              {/*<a href={exportAllXlsxHref} className={getExportLinkClass(false)}>
+              <a href={exportAllXlsxHref} className={getExportLinkClass(false)}>
                 Export ALL (XLSX)
               </a>
               <a href={exportAllPdfHref} className={getExportLinkClass(false)}>
                 Export ALL (PDF)
-              </a>*/}
+              </a>
             </div>
           </div>
 
@@ -381,12 +381,12 @@ useEffect(() => {
             <div className="mt-4 flex flex-wrap gap-3">
               <a href={winnersAllCsvHref} className={getExportLinkClass(false)}>
                 Winners (CSV)
-             {/* </a>
+             </a>
               <a href={winnersAllXlsxHref} className={getExportLinkClass(false)}>
                 Winners (XLSX)
               </a>
               <a href={winnersAllPdfHref} className={getExportLinkClass(false)}>
-                Winners (PDF)*/}
+                Winners (PDF)
               </a>
             </div>
           </div>

@@ -394,24 +394,33 @@ export class AdminExportsService {
     return this.docToBuffer(doc);
   }
 
-  private buildGenericCsv(rows: Record<string, any>[]) {
-    if (!rows.length) {
-      return Buffer.from('', 'utf8');
-    }
-
-    const headers = Object.keys(rows[0]);
-
-    const lines = [
-      headers.join(','),
-      ...rows.map((row) =>
-        headers
-          .map((header) => this.escapeCsv(row[header]))
-          .join(','),
-      ),
-    ];
-
-    return Buffer.from(lines.join('\r\n'), 'utf8');
+private buildGenericCsv(
+  rows: Record<string, any>[],
+) {
+  if (!rows.length) {
+    return Buffer.from('', 'utf8');
   }
+
+  const headers = Object.keys(rows[0]);
+
+  const lines = [
+    headers.join(','),
+    ...rows.map((row) =>
+      headers
+        .map((header) =>
+          this.escapeCsv(
+            row[header],
+          ),
+        )
+        .join(','),
+    ),
+  ];
+
+  return Buffer.from(
+    lines.join('\r\n'),
+    'utf8',
+  );
+}
 
   private async buildGenericXlsx(
     rows: Record<string, any>[],
@@ -521,45 +530,91 @@ export class AdminExportsService {
       buffer: await this.buildGenericPdf(rows, pdfTitle),
     };
   }
+async exportOneElection(
+  electionId: number,
+  format: ExportFormat,
+) {
+  const fmt = (
+    format || ''
+  ).toLowerCase() as ExportFormat;
 
-  async exportOneElection(electionId: number, format: ExportFormat) {
-    const fmt = (format || '').toLowerCase() as ExportFormat;
-    if (fmt !== 'csv' && fmt !== 'xlsx' && fmt !== 'pdf') {
-      throw new BadRequestException('format must be csv | xlsx | pdf');
-    }
+  if (
+    fmt !== 'csv' &&
+    fmt !== 'xlsx' &&
+    fmt !== 'pdf'
+  ) {
+    throw new BadRequestException(
+      'format must be csv | xlsx | pdf',
+    );
+  }
 
-    const rows = await this.fetchElectionRows(electionId);
-    const title = rows?.[0]?.electionTitle
-      ? `${rows[0].electionTitle} (ID: ${electionId})`
-      : `Election ID: ${electionId}`;
+  const rows =
+    await this.fetchElectionRows(
+      electionId,
+    );
 
-    if (fmt === 'csv') {
-      const buffer = this.buildCsv(rows);
-      return {
-        contentType: 'text/csv; charset=utf-8',
-        filename: `election-${electionId}-results.csv`,
-        buffer,
-      };
-    }
+  const title =
+    rows?.[0]
+      ?.electionTitle ||
+    `Election ${electionId}`;
 
-    if (fmt === 'xlsx') {
-      const buffer = await this.buildXlsx(rows);
-      return {
-        contentType:
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        filename: `election-${electionId}-results.xlsx`,
-        buffer,
-      };
-    }
+  // ✅ SAFE FILE NAME
+  const safeTitle =
+    title
+      .replace(
+        /[^a-zA-Z0-9\s-]/g,
+        '',
+      )
+      .trim()
+      .replace(
+        /\s+/g,
+        '-',
+      );
 
-    const buffer = await this.buildPdf(rows, title);
+  if (fmt === 'csv') {
     return {
-      contentType: 'application/pdf',
-      filename: `election-${electionId}-results.pdf`,
-      buffer,
+      contentType:
+        'text/csv; charset=utf-8',
+
+      filename:
+        `${safeTitle}-results.csv`,
+
+      buffer:
+        this.buildCsv(
+          rows,
+        ),
     };
   }
 
+  if (fmt === 'xlsx') {
+    return {
+      contentType:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+      filename:
+        `${safeTitle}-results.xlsx`,
+
+      buffer:
+        await this.buildXlsx(
+          rows,
+        ),
+    };
+  }
+
+  return {
+    contentType:
+      'application/pdf',
+
+    filename:
+      `${safeTitle}-results.pdf`,
+
+    buffer:
+      await this.buildPdf(
+        rows,
+        title,
+      ),
+  };
+}
   async exportAllElections(format: ExportFormat) {
     const fmt = (format || '').toLowerCase() as ExportFormat;
     if (fmt !== 'csv' && fmt !== 'xlsx' && fmt !== 'pdf') {
@@ -633,31 +688,101 @@ export class AdminExportsService {
     };
   }
 
-  async exportAuditLogs(format: ExportFormat) {
-    const fmt = (format || '').toLowerCase() as ExportFormat;
-    if (fmt !== 'csv' && fmt !== 'xlsx' && fmt !== 'pdf') {
-      throw new BadRequestException('format must be csv | xlsx | pdf');
-    }
+  async exportAuditLogs(
+  format: ExportFormat,
+) {
+  const fmt = (
+    format || ''
+  ).toLowerCase() as ExportFormat;
 
-    const rows = await this.dataSource.query(`
+  if (
+    fmt !== 'csv' &&
+    fmt !== 'xlsx' &&
+    fmt !== 'pdf'
+  ) {
+    throw new BadRequestException(
+      'format must be csv | xlsx | pdf',
+    );
+  }
+
+  const rawRows =
+    await this.dataSource.query(`
       SELECT
         AUDIT_ID      AS "auditId",
+
         PERFORMED_BY  AS "admin",
+
         ACTION        AS "action",
+
         ENTITY        AS "module",
+
         ENTITY_ID     AS "target",
+
         DETAILS       AS "details",
+
         CREATED_AT    AS "createdAt"
+
       FROM AUDIT_LOGS
+
       ORDER BY CREATED_AT DESC
     `);
 
-    return this.exportRows(
-      'audit_logs',
-      rows,
-      fmt,
-      'Audit Logs',
-      'Audit Logs',
-    );
-  }
+  // ✅ CLEAN EXPORT DATA
+  const rows = rawRows.map(
+    (r: any) => {
+      const raw =
+        typeof r.details ===
+        'string'
+          ? r.details
+          : '';
+
+      let details =
+        'ACTIVITY LOG';
+
+      if (
+        raw.includes(
+          '"outcome":"SUCCESS"',
+        )
+      ) {
+        details = 'SUCCESS';
+      } else if (
+        raw.includes(
+          '"outcome":"FAILED"',
+        )
+      ) {
+        details = 'FAILED';
+      } else if (
+        raw.includes('ORA-')
+      ) {
+        details =
+          'DATABASE ERROR';
+      }
+
+      return {
+        auditId: r.auditId,
+
+        admin: r.admin,
+
+        action: r.action,
+
+        module: r.module,
+
+        target: r.target,
+
+        details,
+
+        createdAt:
+          r.createdAt,
+      };
+    },
+  );
+
+  return this.exportRows(
+    'audit_logs',
+    rows,
+    fmt,
+    'Audit Logs',
+    'Audit Logs',
+  );
+}
 }

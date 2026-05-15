@@ -81,40 +81,121 @@ export class AdminController {
       throw new BadRequestException('format must be csv | xlsx | pdf');
     }
 
-    const { contentType, filename, buffer } =
-      await this.adminExportsService.exportOneElection(
-        electionId,
-        fmt as 'csv' | 'xlsx' | 'pdf',
-      );
+    const {
+  contentType,
+  filename,
+  buffer,
+} =
+  await this
+    .adminExportsService
+    .exportOneElection(
+      electionId,
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Cache-Control', 'no-store');
+      fmt as
+        | 'csv'
+        | 'xlsx'
+        | 'pdf',
+    );
 
-    return res.send(buffer);
+res.setHeader(
+  'Content-Type',
+  contentType,
+);
+
+res.setHeader(
+  'Content-Disposition',
+  `attachment; filename="${filename}"`,
+);
+
+res.setHeader(
+  'Content-Length',
+  buffer.length,
+);
+
+res.setHeader(
+  'Cache-Control',
+  'no-store',
+);
+
+return res.send(
+  buffer,
+);
+}
+
+@Get(
+  'results/export-winners',
+)
+@UseGuards(
+  JwtAuthGuard,
+  RolesGuard,
+)
+@Roles(
+  Role.SUPER_ADMIN,
+)
+@Audit(
+  'EXPORT_RESULTS_WINNERS',
+  'RESULT',
+)
+async exportWinners(
+  @Query('format')
+  format: string,
+
+  @Res()
+  res: Response,
+) {
+  const fmt = (
+    format ||
+    'csv'
+  ).toLowerCase();
+
+  if (
+    fmt !== 'csv' &&
+    fmt !== 'xlsx' &&
+    fmt !== 'pdf'
+  ) {
+    throw new BadRequestException(
+      'format must be csv | xlsx | pdf',
+    );
   }
 
-  @Get('results/export-winners')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN)
-  @Audit('EXPORT_RESULTS_WINNERS', 'RESULT')
-  async exportWinners(@Query('format') format: string, @Res() res: Response) {
-    const fmt = (format || 'csv').toLowerCase();
-    if (fmt !== 'csv' && fmt !== 'xlsx' && fmt !== 'pdf') {
-      throw new BadRequestException('format must be csv | xlsx | pdf');
-    }
-
-    const { contentType, filename, buffer } =
-      await this.adminExportsService.exportWinnersAll(
-        fmt as 'csv' | 'xlsx' | 'pdf',
+  const {
+    contentType,
+    filename,
+    buffer,
+  } =
+    await this
+      .adminExportsService
+      .exportWinnersAll(
+        fmt as
+          | 'csv'
+          | 'xlsx'
+          | 'pdf',
       );
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Cache-Control', 'no-store');
+  res.setHeader(
+    'Content-Type',
+    contentType,
+  );
 
-    return res.send(buffer);
-  }
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${filename}"`,
+  );
+
+  res.setHeader(
+    'Content-Length',
+    buffer.length,
+  );
+
+  res.setHeader(
+    'Cache-Control',
+    'no-store',
+  );
+
+  return res.send(
+    buffer,
+  );
+}
 
   @Get('results/export-all')
   @UseGuards(JwtAuthGuard, RolesGuard)

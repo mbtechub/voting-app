@@ -109,7 +109,7 @@ if (role === 'SUPER_ADMIN') {
               </div>
 
               <h1 className="text-4xl font-bold leading-tight">
-                Welcome back to VOTING PAGE
+                Welcome back
               </h1>
 
               <p className="mt-5 max-w-xl text-base leading-7 text-blue-100">
@@ -117,22 +117,35 @@ if (role === 'SUPER_ADMIN') {
                 activities from one secure dashboard.
               </p>
 
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+
+<div className="mt-8 flex justify-center">
+  <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur max-w-sm">
+    <p className="text-sm font-semibold">Secure Access</p>
+
+    <p className="mt-2 text-sm text-blue-100">
+      Login with your username or email and continue to your admin
+      workspace.
+    </p>
+  </div>
+
+
+              {/*<div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
                   <p className="text-sm font-semibold">Secure Access</p>
                   <p className="mt-2 text-sm text-blue-100">
                     Login with your username or email and continue to your admin
                     workspace.
                   </p>
-                </div>
+                </div>*/}
 
-                <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                 {/* <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
                   <p className="text-sm font-semibold">Role-Based Dashboard</p>
                   <p className="mt-2 text-sm text-blue-100">
                     Super Admin and Admin users are redirected to the right
                     panel automatically.
                   </p>
-                </div>
+
+                </div>*/}
               </div>
             </div>
           </div>
