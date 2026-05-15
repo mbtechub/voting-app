@@ -68,18 +68,46 @@ async function bootstrap() {
   // =====================================================
   app.use('/uploads', express.static('uploads'));
 
-  // =====================================================
-  // 🌐 CORS
-  // =====================================================
-  const allowedOrigins = [
-    'http://localhost:3001',
-    process.env.FRONTEND_BASE_URL,
-  ].filter(Boolean);
+ // =====================================================
+// 🌐 CORS
+// =====================================================
+const allowedOrigins = [
+  'http://localhost:3001',
+  'http://localhost:3000',
 
-  app.enableCors({
-    origin: allowedOrigins.length ? allowedOrigins : true,
-    credentials: true,
-  });
+  // Production custom domains
+  process.env.FRONTEND_BASE_URL,
+  'https://lasugalanight.com.ng',
+  'https://www.lasugalanight.com.ng',
+
+  // Vercel fallback domain
+  'https://voting-app-five-delta.vercel.app',
+].filter(Boolean);
+
+console.log('🌐 Allowed CORS origins:', allowedOrigins);
+
+app.enableCors({
+  origin: (origin, callback) => {
+    // allow server-to-server requests or Postman
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.error(`❌ Blocked by CORS: ${origin}`);
+    return callback(new Error(`CORS blocked: ${origin}`), false);
+  },
+
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'Origin',
+  ],
+});
 
   // =====================================================
   // 🌍 GLOBAL PREFIX
