@@ -40,22 +40,22 @@ export default function PublicHeader() {
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-700">
-          <Link href="/" className="hover:text-black">
-            Home
+          <Link href="/vote"  className="hover:text-black">
+            Polls
           </Link>
 
-          <Link href="/vote" className="hover:text-black">
-            Polls
+          <Link href="admin/login" className="hover:text-black">
+            Admin
           </Link>
 
           <ViewCartButton />
 
-          <Link
+          {/*<Link
             href="/vote"
             className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition"
           >
             Start Voting
-          </Link>
+          </Link>*/}
         </nav>
 
         {/* Mobile Right */}

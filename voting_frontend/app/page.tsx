@@ -109,6 +109,7 @@ export default function Home() {
               >
                 Start Voting
               </Link>
+              
 
               <Link
                 href="/admin/login"
