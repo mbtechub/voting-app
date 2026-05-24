@@ -44,7 +44,7 @@ export default function PublicHeader() {
             Polls
           </Link>
 
-          <Link href="admin/login" className="hover:text-black">
+          <Link href="/admin/login" className="hover:text-black">
             Admin
           </Link>
 
