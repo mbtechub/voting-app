@@ -1,7 +1,0 @@
-WALLET_LOCATION =
-(SOURCE =
-(METHOD = file)
-(METHOD_DATA =
-(DIRECTORY="/opt/render/project/src/voting-backend/wallet2")))
-
-SSL_SERVER_DN_MATCH=yes
