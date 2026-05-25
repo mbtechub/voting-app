@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import * as path from 'path';
 import * as fs from 'fs';
+import * as oracledb from 'oracledb'; // <-- ADD
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
@@ -48,6 +49,42 @@ try {
 }
 
 // =====================================================
+// 🔥 DIRECT ORACLE TEST (NEW)
+// =====================================================
+(async () => {
+  try {
+    console.log('🔍 Testing Oracle connection...');
+
+    const conn = await oracledb.getConnection({
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      connectString: process.env.DB_CONNECT_STRING,
+      configDir: process.env.TNS_ADMIN,
+    });
+
+    console.log('✅ DIRECT ORACLE CONNECTED');
+
+    const result = await conn.execute(
+      `SELECT USER, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') FROM dual`
+    );
+
+    console.log('✅ DB TEST:', result.rows);
+
+    await conn.close();
+
+    console.log('✅ ORACLE CLOSED');
+
+  } catch (err: any) {
+
+    console.error(
+      '❌ DIRECT ORACLE ERROR:',
+      err
+    );
+
+  }
+})();
+
+// =====================================================
 // 🚀 BOOTSTRAP
 // =====================================================
 async function bootstrap() {
@@ -56,7 +93,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // =====================================================
-  // 🔐 TRUST PROXY (RENDER)
+  // 🔐 TRUST PROXY
   // =====================================================
   const instance = app.getHttpAdapter().getInstance();
   if (instance?.set) {
@@ -68,54 +105,49 @@ async function bootstrap() {
   // =====================================================
   app.use('/uploads', express.static('uploads'));
 
- // =====================================================
-// 🌐 CORS
-// =====================================================
-const allowedOrigins = [
-  'http://localhost:3001',
-  'http://localhost:3000',
+  // =====================================================
+  // 🌐 CORS
+  // =====================================================
+  const allowedOrigins = [
+    'http://localhost:3001',
+    'http://localhost:3000',
+    process.env.FRONTEND_BASE_URL,
+    'https://lasugalanight.com.ng',
+    'https://www.lasugalanight.com.ng',
+    'https://voting-app-five-delta.vercel.app',
+  ].filter(Boolean);
 
-  // Production custom domains
-  process.env.FRONTEND_BASE_URL,
-  'https://lasugalanight.com.ng',
-  'https://www.lasugalanight.com.ng',
+  console.log('🌐 Allowed CORS origins:', allowedOrigins);
 
-  // Vercel fallback domain
-  'https://voting-app-five-delta.vercel.app',
-].filter(Boolean);
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
 
-console.log('🌐 Allowed CORS origins:', allowedOrigins);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-app.enableCors({
-  origin: (origin, callback) => {
-    // allow server-to-server requests or Postman
-    if (!origin) return callback(null, true);
+      console.error(`❌ Blocked by CORS: ${origin}`);
+      return callback(new Error(`CORS blocked: ${origin}`), false);
+    },
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    console.error(`❌ Blocked by CORS: ${origin}`);
-    return callback(new Error(`CORS blocked: ${origin}`), false);
-  },
-
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'Accept',
-    'Origin',
-  ],
-});
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+    ],
+  });
 
   // =====================================================
-  // 🌍 GLOBAL PREFIX
+  // PREFIX
   // =====================================================
   app.setGlobalPrefix('api');
 
   // =====================================================
-  // 🔥 CRITICAL FIX: PAYSTACK RAW BODY (CORRECT ROUTE)
+  // PAYSTACK RAW BODY
   // =====================================================
   app.use(
     '/api/paystack/webhook',
@@ -127,25 +159,27 @@ app.enableCors({
     }),
   );
 
-  // =====================================================
-  // JSON HANDLER
-  // =====================================================
   const jsonParser = bodyParser.json({ limit: '2mb' });
 
   app.use((req: any, res: any, next: any) => {
     const url = (req.originalUrl || req.url || '').toString();
 
-    if (url.startsWith('/api/paystack/webhook')) return next();
+    if (url.startsWith('/api/paystack/webhook'))
+      return next();
 
-    const contentType = req.headers['content-type'] || '';
-    if (contentType.includes('multipart/form-data')) return next();
+    const contentType =
+      req.headers['content-type'] || '';
+
+    if (
+      contentType.includes(
+        'multipart/form-data'
+      )
+    )
+      return next();
 
     return jsonParser(req, res, next);
   });
 
-  // =====================================================
-  // FORM DATA
-  // =====================================================
   app.use(
     bodyParser.urlencoded({
       extended: true,
@@ -153,9 +187,6 @@ app.enableCors({
     }),
   );
 
-  // =====================================================
-  // VALIDATION
-  // =====================================================
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -163,39 +194,27 @@ app.enableCors({
     }),
   );
 
-  // =====================================================
-  // HEALTH CHECK
-  // =====================================================
-  app.getHttpAdapter().get('/health', (_req, res) => {
-    res.status(200).send('OK');
-  });
+  app.getHttpAdapter().get(
+    '/health',
+    (_req, res) => {
+      res.status(200).send('OK');
+    },
+  );
 
-  // =====================================================
-  // START SERVER
-  // =====================================================
-  const port = Number(process.env.PORT || 3000);
+  const port =
+    Number(process.env.PORT || 3000);
 
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 Server running on port ${port}`);
-  console.log(`🌍 Mode: ${isProd ? 'PRODUCTION' : 'LOCAL'}`);
+  console.log(
+    `🚀 Server running on port ${port}`
+  );
 
-  // =====================================================
-  // DB DEBUG
-  // =====================================================
-  setTimeout(async () => {
-    try {
-      const ds = app.get(DataSource);
-
-      const result = await ds.query(
-        `SELECT USER AS db_user, SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema FROM dual`,
-      );
-
-      console.log('✅ DB CONNECTED:', result);
-    } catch (err: any) {
-      console.error('❌ DB CONNECTION FAILED:', err.message);
-    }
-  }, 5000);
+  console.log(
+    `🌍 Mode: ${
+      isProd ? 'PRODUCTION' : 'LOCAL'
+    }`
+  );
 }
 
 bootstrap();
