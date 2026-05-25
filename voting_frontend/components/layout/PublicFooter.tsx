@@ -76,7 +76,7 @@ export default function PublicFooter() {
           </ul>
         </div>
       </div>
-      
+       
 
       {/* Bottom */}
       <div className="border-t border-slate-800 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
