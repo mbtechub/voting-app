@@ -18,7 +18,7 @@ console.log('🚀 BOOTING APP...');
 process.env.TNS_ADMIN =
   process.env.TNS_ADMIN ||
   process.env.ORACLE_WALLET_PATH ||
-  path.join(process.cwd(), 'Wallet_VOTINDB_BASHOLAYOMIDE');
+  path.join(process.cwd(), 'wallet');
 
 // =====================================================
 // 🔍 ENV CHECK
