@@ -1,12 +1,12 @@
-votingdb_high = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_votingdb_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+euvotingapp_high = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_euvotingapp_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-votingdb_medium = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_votingdb_medium.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+euvotingapp_medium = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_euvotingapp_medium.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-votingdb_low = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_votingdb_low.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+euvotingapp_low = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_euvotingapp_low.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-votingdb_tp = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_votingdb_tp.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+euvotingapp_tp = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_euvotingapp_tp.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
-votingdb_tpurgent = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_votingdb_tpurgent.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+euvotingapp_tpurgent = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-stockholm-1.oraclecloud.com))(connect_data=(service_name=gfbb0c1991522f2_euvotingapp_tpurgent.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
 
 
 
