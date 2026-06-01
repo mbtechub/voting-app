@@ -19,8 +19,16 @@ function formatMoney(v: any) {
 
 function formatDate(v: any) {
   if (!v) return '';
+
   try {
-    return new Date(v).toISOString();
+    return new Date(v).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
   } catch {
     return String(v);
   }
@@ -148,7 +156,14 @@ export class ReceiptsPdfService {
             snap.payment?.amount ?? snap.summary?.itemsTotal ?? 0,
           ),
         )
-        .replace('{{paidAt}}', formatDate(snap.payment?.paidAt))
+        .replace(
+  '{{paidAt}}',
+  formatDate(
+    snap.paidAt ||
+    snap.payment?.paidAt ||
+    snap.createdAt
+  ),
+)
         .replace('{{cartUuid}}', snap.cart?.cartUuid || '')
         .replace(
           '{{cartTotal}}',
