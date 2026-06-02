@@ -35,7 +35,7 @@ export default function PublicHeader() {
             </span>
           )}
 
-          <span>Voting App</span>
+          <span>LASU AWARD</span>
         </Link>
 
         {/* Desktop Menu */}
