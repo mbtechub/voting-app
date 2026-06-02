@@ -159,35 +159,32 @@ function requireEnv(
 
             extra: {
 
-              ssl: true,
+  ssl: true,
 
-              sslServerDnMatch:
-                true,
+  sslServerDnMatch:
+    true,
 
-              connectTimeout:
-                30000,
+  connectTimeout:
+    30000,
 
+  // ==========================
+  // 🔥 CONNECTION POOLING
+  // ==========================
 
-              // ==========================
-              // 🔥 CONNECTION POOLING
-              // ==========================
+  poolMin: 5,
 
-              poolMin: 2,
+  poolMax: 25,
 
-              poolMax: 15,
+  poolIncrement: 1,
 
-              poolIncrement: 1,
+  // wait before failing
+  queueTimeout:
+    60000,
+},
 
-
-              // wait before failing
-              queueTimeout:
-                60000,
-            },
-
-
-            // TypeORM pool
-            poolSize:
-              15,
+// TypeORM pool
+poolSize:
+  25,
 
 
             synchronize:
