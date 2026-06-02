@@ -35,7 +35,7 @@ export default function PublicHeader() {
             </span>
           )}
 
-          <span>LASU AWARD</span>
+          <span>LASU AWARDS</span>
         </Link>
 
         {/* Desktop Menu */}

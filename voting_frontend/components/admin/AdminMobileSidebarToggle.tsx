@@ -87,7 +87,7 @@ export default function AdminMobileSidebarToggle() {
 
                 <div className="min-w-0">
                   <p className="truncate text-base font-semibold text-slate-900">
-                    LASU AWARD
+                    LASU AWARDS
                   </p>
                   <p className="text-sm text-slate-500">Admin Console</p>
                 </div>
