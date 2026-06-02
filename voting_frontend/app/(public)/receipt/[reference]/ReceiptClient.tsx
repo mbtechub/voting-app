@@ -133,7 +133,33 @@ export default function ReceiptClient({
 
     return () => clearInterval(timer);
   }, [isPolling]);
+  // ✅ CLEAR CART IMMEDIATELY AFTER SUCCESSFUL PAYMENT
+  useEffect(() => {
+    if (!receipt) return;
 
+    const status =
+      receipt.payment?.status ||
+      (Number(receipt.summary?.appliedTotal || 0) > 0
+        ? 'SUCCESS'
+        : 'INITIATED');
+
+    if (status !== 'SUCCESS') return;
+
+    try {
+      localStorage.removeItem('cartUuid');
+      localStorage.removeItem('cartTotal');
+      localStorage.setItem('cartCount', '0');
+
+      window.dispatchEvent(
+        new Event('cartUpdated')
+      );
+
+      console.log('✅ Cart cleared after successful payment');
+    } catch (err) {
+      console.error('Failed to clear cart state', err);
+    }
+  }, [receipt]);
+  
   // ✅ STRIPE-STYLE LOADING
   if (loading) {
     return (
