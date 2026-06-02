@@ -67,7 +67,7 @@ export default function ReceiptClient({
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const [secondsLeft, setSecondsLeft] = useState(30);
+  const [secondsLeft, setSecondsLeft] = useState(60);
   const [isPolling, setIsPolling] = useState(true);
 
   // ✅ FIXED + TYPED POLLING
@@ -159,7 +159,7 @@ export default function ReceiptClient({
       console.error('Failed to clear cart state', err);
     }
   }, [receipt]);
-  
+
   // ✅ STRIPE-STYLE LOADING
   if (loading) {
     return (
