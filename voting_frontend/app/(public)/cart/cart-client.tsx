@@ -227,39 +227,10 @@ if (!cart && loadingInit) {
       setBusyKey(null);
     }
   }
+
 function updateQty(item: CartItem, nextQty: number) {
   if (nextQty < 1) return;
 
-  // ✅ Instant UI update
-  setCart((prev) => {
-    if (!prev) return prev;
-
-    const items = prev.items.map((x) => {
-      if (
-        x.electionId === item.electionId &&
-        x.candidateId === item.candidateId
-      ) {
-        return {
-          ...x,
-          voteQty: nextQty,
-          subTotal: nextQty * x.pricePerVote,
-        };
-      }
-
-      return x;
-    });
-
-    return {
-      ...prev,
-      items,
-      totalAmount: items.reduce(
-        (sum, x) => sum + x.subTotal,
-        0,
-      ),
-    };
-  });
-
-  // ✅ Debounce backend update
   if (qtyTimer) {
     clearTimeout(qtyTimer);
   }
@@ -270,6 +241,7 @@ function updateQty(item: CartItem, nextQty: number) {
 
   setQtyTimer(timer);
 }
+
   async function removeItem(item: CartItem) {
     const key = `${item.electionId}:${item.candidateId}`;
     setBusyKey(key);
