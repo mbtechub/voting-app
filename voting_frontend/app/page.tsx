@@ -73,7 +73,7 @@ export default function Home() {
               <div>
 
                 <h1 className="text-lg font-bold tracking-wide text-white">
-                  Voting Platform
+                  LASU AWARDS
                 </h1>
 
               </div>

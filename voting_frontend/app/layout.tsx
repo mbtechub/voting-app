@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Voting Platform',
-    template: '%s | Voting Platform',
+    default: 'LASU AWARDS',
+    template: '%s | LASU AWARDS',
   },
 
   description:
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
 
   // ✅ FAVICON / APP ICON
   icons: {
-    icon: 'https://res.cloudinary.com/dsr0z4pr9/image/upload/v1778682508/nominees/sx4l58dw6shdadclmvmo.png?t=1778682524616',
+    icon: 'https://res.cloudinary.com/dsr0z4pr9/image/upload/v1780302268/nominees/k2e1tdugxdmbvmxb9zix.png',
 
     shortcut:
-      'https://res.cloudinary.com/dsr0z4pr9/image/upload/v1778682508/nominees/sx4l58dw6shdadclmvmo.png?t=1778682524616',
+      'https://res.cloudinary.com/dsr0z4pr9/image/upload/v1780302268/nominees/k2e1tdugxdmbvmxb9zix.png',
 
     apple:
-      'https://res.cloudinary.com/dsr0z4pr9/image/upload/v1778682508/nominees/sx4l58dw6shdadclmvmo.png?t=1778682524616',
+      'https://res.cloudinary.com/dsr0z4pr9/image/upload/v1780302268/nominees/k2e1tdugxdmbvmxb9zix.png',
   },
 };
 
