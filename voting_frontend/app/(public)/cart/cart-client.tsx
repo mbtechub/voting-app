@@ -255,7 +255,7 @@ function updateQty(item: CartItem, nextQty: number) {
 
   const timer = setTimeout(() => {
     updateQtyOnServer(item, nextQty);
-  }, 1);
+  }, 150);
 
   setQtyTimer(timer);
 }
