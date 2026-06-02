@@ -32,19 +32,20 @@ function isPaidLikeStatus(status?: string) {
 export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
   // ✅ ALL HOOKS FIRST
+const [cart, setCart] = useState<CartResponse | null>(() => {
+  if (!initial) return null;
+  return { ...initial, items: initial.items ?? [] };
+});
 
-  const [cart, setCart] = useState<CartResponse | null>(() => {
-    if (!initial) return null;
-    return { ...initial, items: initial.items ?? [] };
-  });
+const [localCart, setLocalCart] = useState<CartResponse | null>(null);
 
-  const [loadingInit, setLoadingInit] = useState(!initial);
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [clearing, setClearing] = useState(false);
-  const [qtyTimer, setQtyTimer] = useState<NodeJS.Timeout | null>(null);
+const [loadingInit, setLoadingInit] = useState(!initial);
+const [email, setEmail] = useState('');
+const [loading, setLoading] = useState(false);
+const [busyKey, setBusyKey] = useState<string | null>(null);
+const [err, setErr] = useState<string | null>(null);
+const [clearing, setClearing] = useState(false);
+const [qtyTimer, setQtyTimer] = useState<NodeJS.Timeout | null>(null);
 
   // ✅ LOAD CART IF NEEDED
   useEffect(() => {
@@ -62,12 +63,15 @@ export default function CartClient({ cart: initial }: { cart?: CartResponse }) {
 
     fetch(`/api/public/cart/${cartUuid}`, { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => {
-        setCart({
-          ...data,
-          items: data?.items ?? [],
-        });
-      })
+  .then((data) => {
+  const normalized = {
+    ...data,
+    items: data?.items ?? [],
+  };
+
+  setCart(normalized);
+  setLocalCart(normalized);
+})
       .catch(() => {})
       .finally(() => setLoadingInit(false));
   }, [initial]);
@@ -181,17 +185,22 @@ if (!cart && loadingInit) {
     return <div className="p-6">No Active Cart.</div>;
   }
 
-  const c = cart;
+  const c = localCart ?? cart;
 
-  // 👉 continue rest of your file unchanged
-  function syncCart(data: CartResponse) {
-    const items = data.items ?? [];
+ function syncCart(data: CartResponse) {
+  const items = data.items ?? [];
 
-    setCart({ ...data, items });
+  const normalized = {
+    ...data,
+    items,
+  };
 
-    localStorage.setItem('cartCount', String(items.length));
-    window.dispatchEvent(new Event('cartUpdated'));
-  }
+  setCart(normalized);
+  setLocalCart(normalized);
+
+  localStorage.setItem('cartCount', String(items.length));
+  window.dispatchEvent(new Event('cartUpdated'));
+}
 
   async function updateQtyOnServer(
   item: CartItem,
