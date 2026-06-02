@@ -37,7 +37,7 @@ const [cart, setCart] = useState<CartResponse | null>(() => {
   return { ...initial, items: initial.items ?? [] };
 });
 
-const [localCart, setLocalCart] = useState<CartResponse | null>(null);
+
 
 const [loadingInit, setLoadingInit] = useState(!initial);
 const [email, setEmail] = useState('');
@@ -70,7 +70,7 @@ const [qtyTimer, setQtyTimer] = useState<NodeJS.Timeout | null>(null);
   };
 
   setCart(normalized);
-  setLocalCart(normalized);
+  
 })
       .catch(() => {})
       .finally(() => setLoadingInit(false));
@@ -83,7 +83,9 @@ const [qtyTimer, setQtyTimer] = useState<NodeJS.Timeout | null>(null);
   const paidLike = useMemo(() => isPaidLikeStatus(status), [status]);
   const isPayable = useMemo(() => status === 'PENDING', [status]);
 
-  const hasItems = (cart?.items?.length ?? 0) > 0;
+const hasItems = (cart?.items?.length ?? 0) > 0;
+
+
 
   // ✅ FIX: MOVE grouped UP (CRITICAL)
   const grouped = useMemo(() => {
@@ -181,11 +183,11 @@ if (!cart && loadingInit) {
   );
 }
 
-  if (!cart) {
-    return <div className="p-6">No Active Cart.</div>;
-  }
+if (!cart) {
+  return <div className="p-6">No Active Cart.</div>;
+}
 
-  const c = localCart ?? cart;
+const c = cart;
 
  function syncCart(data: CartResponse) {
   const items = data.items ?? [];
@@ -196,7 +198,6 @@ if (!cart && loadingInit) {
   };
 
   setCart(normalized);
-  setLocalCart(normalized);
 
   localStorage.setItem('cartCount', String(items.length));
   window.dispatchEvent(new Event('cartUpdated'));
@@ -227,8 +228,16 @@ if (!cart && loadingInit) {
         throw new Error(data?.message || 'Update failed');
       }
 
-      const data = await res.json();
-      syncCart(data);
+     await res.json();
+
+const fresh = await fetch(
+  `/api/public/cart/${c.cartUuid}`,
+  { cache: 'no-store' }
+);
+
+const freshData = await fresh.json();
+
+syncCart(freshData);
 
     } catch (e: any) {
       setErr(e.message || 'Something went wrong');
@@ -246,7 +255,7 @@ function updateQty(item: CartItem, nextQty: number) {
 
   const timer = setTimeout(() => {
     updateQtyOnServer(item, nextQty);
-  }, 500);
+  }, 1);
 
   setQtyTimer(timer);
 }

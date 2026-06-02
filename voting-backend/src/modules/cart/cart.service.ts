@@ -1,29 +1,3 @@
-// src/modules/cart/cart.service.ts
-// ===================================================
-// PURPOSE:
-// This service contains ALL business logic for creating
-// a cart in the voting application.
-//
-// PRICING ENGINE:
-// - Fetch election & candidate from DB
-// - Validate election ACTIVE
-// - Validate candidate belongs to election
-// - Decide price: candidate override > election default
-// - Snapshot pricePerVote + subTotal into CART_ITEMS
-//
-// UPDATED (per requirement):
-// ✅ Allow MULTIPLE nominees (candidates) within the SAME poll (election) in one cart.
-// ❌ Removed: "Only ONE candidate per election in a cart" restriction.
-//
-// UPDATED (UX improvement):
-// ✅ getCartByUuid now returns electionTitle + candidateName + photoUrl (if available)
-//   so public cart page can display names/pics instead of only IDs.
-//
-// IMPORTANT FIX (why you still saw Poll # / Nominee #):
-// ✅ We now use ONE SQL join query in getCartByUuid so titles/names ALWAYS come back,
-//   regardless of TypeORM entity mapping issues.
-// ===================================================
-
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SequenceService } from '../../common/sequence.service';
@@ -343,11 +317,13 @@ async getCartByUuid(cartUuid: string) {
         .select('NVL(SUM(ci.subTotal), 0)', 'total')
         .where('ci.cart = :cartId', { cartId: cart.cartId })
         .getRawOne<{ total: number }>();
+cart.totalAmount = Number(sumRow?.total ?? 0);
+await manager.save(cart);
 
-      cart.totalAmount = Number(sumRow?.total ?? 0);
-      await manager.save(cart);
-
-      return this.getCartByUuid(cartUuid);
+return {
+  success: true,
+  totalAmount: cart.totalAmount,
+};
     });
   }
 
