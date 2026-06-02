@@ -382,60 +382,83 @@ function updateQty(item: CartItem, nextQty: number) {
             const name = i.candidateName || `Nominee ${i.candidateId}`;
 
             return (
-              <div key={key} className="rounded-2xl border bg-white p-4 shadow-sm flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1">
-                  {i.photoUrl ? (
-                    <img src={i.photoUrl} className="w-12 h-12 rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center font-semibold text-gray-600">
-                      {name[0]}
-                    </div>
-                  )}
+  <div
+    key={key}
+    className="rounded-2xl border bg-white p-4 shadow-sm flex items-center justify-between gap-4"
+  >
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+      {i.photoUrl ? (
+        <img
+          src={i.photoUrl}
+          className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center font-semibold text-gray-600 flex-shrink-0">
+          {name[0]}
+        </div>
+      )}
 
-                  <div>
-                    <div className="font-semibold text-gray-900">{name}</div>
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold text-gray-900 truncate">
+          {name}
+        </div>
 
-                    <div className="mt-2 flex items-center gap-2">
-                <button
-  onClick={() => updateQty(i, i.voteQty - 1)}
-  disabled={busy || i.voteQty <= 1}
-  className="w-8 h-8 rounded-lg border disabled:opacity-50"
->
-  {busy ? '...' : '−'}
-</button>
-                      <input
-                        type="number"
-                        min={1}
-                        value={i.voteQty}
-                        onChange={(e) => {
-                          const num = Number(e.target.value);
-                          if (!Number.isNaN(num) && num >= 1) {
-                            updateQty(i, num);
-                          }
-                        }}
-                       disabled={busy}
-  className={`w-14 h-8 rounded-lg border text-center text-sm ${
-    busy ? 'bg-slate-100 animate-pulse' : ''
-  }`}
-/>
-                      <button
-  onClick={() => updateQty(i, i.voteQty + 1)}
-  disabled={busy}
-  className="w-8 h-8 rounded-lg bg-black text-white disabled:opacity-50"
->
-  {busy ? '...' : '+'}
-</button>
+        <div className="mt-2 flex items-center gap-2 relative">
 
-                      <button onClick={() => removeItem(i)} disabled={busy} className="text-xs text-red-600 ml-2">Remove</button>
-                    </div>
-                    
-                  </div>
-                </div>
-where do we add this {busy && (
-  <div className="text-xs text-blue-600 mt-1">
-    Updating...
-  </div>
-)}
+          {busy && (
+            <div className="absolute -top-2 left-0">
+              <div className="h-2 w-2 rounded-full bg-black animate-pulse" />
+            </div>
+          )}
+
+          <button
+            onClick={() => updateQty(i, i.voteQty - 1)}
+            disabled={busy || i.voteQty <= 1}
+            className="w-8 h-8 rounded-lg border disabled:opacity-50"
+          >
+            {busy ? '•' : '−'}
+          </button>
+
+          <input
+            type="number"
+            min={1}
+            value={i.voteQty}
+            onChange={(e) => {
+              const num = Number(e.target.value);
+
+              if (!Number.isNaN(num) && num >= 1) {
+                updateQty(i, num);
+              }
+            }}
+            disabled={busy}
+            className={`w-14 h-8 rounded-lg border text-center text-sm transition-all duration-200 ${
+              busy
+                ? 'bg-slate-100 animate-pulse font-semibold'
+                : ''
+            }`}
+          />
+
+          <button
+            onClick={() => updateQty(i, i.voteQty + 1)}
+            disabled={busy}
+            className="w-8 h-8 rounded-lg bg-black text-white disabled:opacity-50"
+          >
+            {busy ? '•' : '+'}
+          </button>
+
+          <button
+            onClick={() => removeItem(i)}
+            disabled={busy}
+            className="text-xs text-red-600 ml-2 whitespace-nowrap"
+          >
+            Remove
+          </button>
+
+        </div>
+      </div>
+    </div>
+                  
+
                 <div className="font-semibold">{money(i.subTotal)}</div>
               </div>
             );
