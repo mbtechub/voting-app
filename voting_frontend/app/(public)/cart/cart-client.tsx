@@ -249,6 +249,9 @@ syncCart(freshData);
 function updateQty(item: CartItem, nextQty: number) {
   if (nextQty < 1) return;
 
+  const key = `${item.electionId}:${item.candidateId}`;
+  setBusyKey(key);
+
   if (qtyTimer) {
     clearTimeout(qtyTimer);
   }
@@ -393,8 +396,13 @@ function updateQty(item: CartItem, nextQty: number) {
                     <div className="font-semibold text-gray-900">{name}</div>
 
                     <div className="mt-2 flex items-center gap-2">
-                      <button onClick={() => updateQty(i, i.voteQty - 1)} disabled={busy || i.voteQty <= 1} className="w-8 h-8 rounded-lg border">−</button>
-
+                <button
+  onClick={() => updateQty(i, i.voteQty - 1)}
+  disabled={busy || i.voteQty <= 1}
+  className="w-8 h-8 rounded-lg border disabled:opacity-50"
+>
+  {busy ? '...' : '−'}
+</button>
                       <input
                         type="number"
                         min={1}
@@ -405,17 +413,29 @@ function updateQty(item: CartItem, nextQty: number) {
                             updateQty(i, num);
                           }
                         }}
-                        disabled={busy}
-                        className="w-14 h-8 rounded-lg border text-center text-sm"
-                      />
-
-                      <button onClick={() => updateQty(i, i.voteQty + 1)} disabled={busy} className="w-8 h-8 rounded-lg bg-black text-white">+</button>
+                       disabled={busy}
+  className={`w-14 h-8 rounded-lg border text-center text-sm ${
+    busy ? 'bg-slate-100 animate-pulse' : ''
+  }`}
+/>
+                      <button
+  onClick={() => updateQty(i, i.voteQty + 1)}
+  disabled={busy}
+  className="w-8 h-8 rounded-lg bg-black text-white disabled:opacity-50"
+>
+  {busy ? '...' : '+'}
+</button>
 
                       <button onClick={() => removeItem(i)} disabled={busy} className="text-xs text-red-600 ml-2">Remove</button>
                     </div>
+                    
                   </div>
                 </div>
-
+where do we add this {busy && (
+  <div className="text-xs text-blue-600 mt-1">
+    Updating...
+  </div>
+)}
                 <div className="font-semibold">{money(i.subTotal)}</div>
               </div>
             );
