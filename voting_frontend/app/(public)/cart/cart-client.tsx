@@ -46,6 +46,7 @@ const [busyKey, setBusyKey] = useState<string | null>(null);
 const [err, setErr] = useState<string | null>(null);
 const [clearing, setClearing] = useState(false);
 const [qtyTimer, setQtyTimer] = useState<NodeJS.Timeout | null>(null);
+const [editingQty, setEditingQty] = useState<Record<string, string>>({});
 
   // ✅ LOAD CART IF NEEDED
   useEffect(() => {
@@ -207,44 +208,51 @@ const c = cart;
   item: CartItem,
   nextQty: number,
 ) {
-    if (nextQty < 1) return;
+  if (nextQty < 1) return;
 
-    const key = `${item.electionId}:${item.candidateId}`;
-    setBusyKey(key);
+  const key = `${item.electionId}:${item.candidateId}`;
+  setBusyKey(key);
 
-    try {
-      const res = await fetch(`/api/cart/${c.cartUuid}/item`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          electionId: item.electionId,
-          candidateId: item.candidateId,
-          voteQty: nextQty,
-        }),
-      });
+  try {
+    const res = await fetch(`/api/cart/${c.cartUuid}/item`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        electionId: item.electionId,
+        candidateId: item.candidateId,
+        voteQty: nextQty,
+      }),
+    });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.message || 'Update failed');
-      }
-
-     await res.json();
-
-const fresh = await fetch(
-  `/api/public/cart/${c.cartUuid}`,
-  { cache: 'no-store' }
-);
-
-const freshData = await fresh.json();
-
-syncCart(freshData);
-
-    } catch (e: any) {
-      setErr(e.message || 'Something went wrong');
-    } finally {
-      setBusyKey(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.message || 'Update failed');
     }
+
+    await res.json();
+
+    const fresh = await fetch(
+      `/api/public/cart/${c.cartUuid}`,
+      { cache: 'no-store' }
+    );
+
+    const freshData = await fresh.json();
+
+    syncCart(freshData);
+
+    // ✅ Clear temporary input state so + / - always use fresh values
+    setEditingQty((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+
+  } catch (e: any) {
+    setErr(e.message || 'Something went wrong');
+  } finally {
+    setBusyKey(null);
   }
+}
 
 function updateQty(item: CartItem, nextQty: number) {
   if (nextQty < 1) return;
@@ -411,26 +419,56 @@ function updateQty(item: CartItem, nextQty: number) {
             </div>
           )}
 
-          <button
-            onClick={() => updateQty(i, i.voteQty - 1)}
-            disabled={busy || i.voteQty <= 1}
-            className="w-8 h-8 rounded-lg border disabled:opacity-50"
-          >
-            {busy ? '•' : '−'}
-          </button>
+         <button
+  onClick={() => {
+    const current = Number(
+      editingQty[key] !== undefined
+        ? editingQty[key]
+        : i.voteQty
+    );
 
-          <input
+    updateQty(i, current - 1);
+  }}
+  disabled={
+    busy ||
+    Number(
+      editingQty[key] !== undefined
+        ? editingQty[key]
+        : i.voteQty
+    ) <= 1
+  }
+  className="w-8 h-8 rounded-lg border disabled:opacity-50"
+>
+  {busy ? '•' : '−'}
+</button>
+
+         <input
   type="number"
   min={1}
-  defaultValue={i.voteQty}
+  value={
+    editingQty[key] !== undefined
+      ? editingQty[key]
+      : String(i.voteQty)
+  }
   disabled={busy}
+  onChange={(e) => {
+    setEditingQty((prev) => ({
+      ...prev,
+      [key]: e.target.value,
+    }));
+  }}
   onBlur={(e) => {
     let num = Number(e.target.value);
 
     if (!num || num < 1) {
       num = 1;
-      e.target.value = '1';
     }
+
+    setEditingQty((prev) => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
 
     if (num !== i.voteQty) {
       updateQty(i, num);
@@ -449,12 +487,20 @@ function updateQty(item: CartItem, nextQty: number) {
 />
 
           <button
-            onClick={() => updateQty(i, i.voteQty + 1)}
-            disabled={busy}
-            className="w-8 h-8 rounded-lg bg-black text-white disabled:opacity-50"
-          >
-            {busy ? '•' : '+'}
-          </button>
+  onClick={() => {
+    const current = Number(
+      editingQty[key] !== undefined
+        ? editingQty[key]
+        : i.voteQty
+    );
+
+    updateQty(i, current + 1);
+  }}
+  disabled={busy}
+  className="w-8 h-8 rounded-lg bg-black text-white disabled:opacity-50"
+>
+  {busy ? '•' : '+'}
+</button>
 
           <button
             onClick={() => removeItem(i)}
