@@ -420,23 +420,33 @@ function updateQty(item: CartItem, nextQty: number) {
           </button>
 
           <input
-            type="number"
-            min={1}
-            value={i.voteQty}
-            onChange={(e) => {
-              const num = Number(e.target.value);
+  type="number"
+  min={1}
+  defaultValue={i.voteQty}
+  disabled={busy}
+  onBlur={(e) => {
+    let num = Number(e.target.value);
 
-              if (!Number.isNaN(num) && num >= 1) {
-                updateQty(i, num);
-              }
-            }}
-            disabled={busy}
-            className={`w-14 h-8 rounded-lg border text-center text-sm transition-all duration-200 ${
-              busy
-                ? 'bg-slate-100 animate-pulse font-semibold'
-                : ''
-            }`}
-          />
+    if (!num || num < 1) {
+      num = 1;
+      e.target.value = '1';
+    }
+
+    if (num !== i.voteQty) {
+      updateQty(i, num);
+    }
+  }}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  }}
+  className={`w-14 h-8 rounded-lg border text-center text-sm transition-all duration-200 ${
+    busy
+      ? 'bg-slate-100 animate-pulse font-semibold'
+      : ''
+  }`}
+/>
 
           <button
             onClick={() => updateQty(i, i.voteQty + 1)}
