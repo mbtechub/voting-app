@@ -11,6 +11,8 @@ import {
 import { WebhooksService }
 from './webhooks.service';
 
+import { Param } from '@nestjs/common';
+
 
 @Controller() // ✅ no prefix
 export class WebhooksController {
@@ -40,4 +42,12 @@ export class WebhooksController {
         req,
       );
   }
+  @Post('payments/reconcile/:reference')
+async reconcilePayment(
+  @Param('reference') reference: string,
+) {
+  return this.webhooksService.reconcileReference(
+    reference,
+  );
+}
 }

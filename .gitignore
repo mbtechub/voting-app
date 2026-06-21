@@ -9,3 +9,6 @@ dist
 *.json
 cookies*
 curl
+# Next.js
+.next/
+voting_frontend/.next/

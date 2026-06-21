@@ -285,7 +285,7 @@ export class WebhooksService {
   // ===================================================
   // Verify Paystack transaction by reference
   // ===================================================
-  private async verifyPaystackTransaction(reference: string) {
+  public async verifyPaystackTransaction(reference: string){
     const secret = (this.configService.get<string>('PAYSTACK_SECRET_KEY') || '')
       .trim();
     if (!secret) {
@@ -328,7 +328,7 @@ export class WebhooksService {
   // ===================================================
   // Finalize payment + apply votes (TRANSACTIONAL)
   // ===================================================
-  private async markPaymentSuccess(
+  public async markPaymentSuccess(
     paystackRef: string,
     webhookPayload: any,
     verifiedData?: any,
@@ -624,4 +624,36 @@ export class WebhooksService {
       throw e;
     }
   }
+
+  async reconcileReference(reference: string) {
+  const verify = await this.verifyPaystackTransaction(reference);
+
+  if (!verify?.status) {
+    throw new BadRequestException(
+      'Paystack verification failed',
+    );
+  }
+
+  if (
+    (verify.data?.status || '').toLowerCase() !==
+    'success'
+  ) {
+    throw new BadRequestException(
+      `Paystack status is ${verify.data?.status}`,
+    );
+  }
+
+  await this.markPaymentSuccess(
+    reference,
+    verify.data,
+    verify.data,
+  );
+
+  return {
+    success: true,
+    reference,
+    paystackStatus: verify.data.status,
+  };
+}
+
 }
