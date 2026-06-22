@@ -3,7 +3,9 @@
 // PURPOSE:
 // Registers entities used by PaymentsService during:
 // - payment initiation
-// - Paystack webhook finalization (VoteLog + ElectionResult updates)
+// - Paystack webhook processing
+// - vote application
+// - payment reconciliation jobs
 // ===================================================
 
 import { Module } from '@nestjs/common';
@@ -11,8 +13,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
+import { PaymentReconciliationService } from './payment-reconciliation.service';
 
 import { ReceiptsModule } from '../receipts/receipts.module';
+import { WebhooksModule } from '../webhooks/webhooks.module';
 
 import { Payment } from './entities/payment.entity';
 import { Cart } from '../cart/entities/cart.entity';
@@ -23,7 +27,6 @@ import { ElectionResult } from '../votes/entities/election-result.entity';
 
 @Module({
   imports: [
-    // ✅ Entities used inside PaymentsService transactions
     TypeOrmModule.forFeature([
       Payment,
       Cart,
@@ -33,13 +36,25 @@ import { ElectionResult } from '../votes/entities/election-result.entity';
       ElectionResult,
     ]),
 
-    // ✅ Makes ReceiptsService available for DI
+    // Receipt generation
     ReceiptsModule,
-  ],
-  controllers: [PaymentsController],
-  providers: [PaymentsService],
 
-  // Optional but fine to keep
-  exports: [PaymentsService],
+    // Required for webhook-related payment recovery
+    WebhooksModule,
+  ],
+
+  controllers: [
+    PaymentsController,
+  ],
+
+  providers: [
+    PaymentsService,
+    PaymentReconciliationService,
+  ],
+
+  exports: [
+    PaymentsService,
+    PaymentReconciliationService,
+  ],
 })
 export class PaymentsModule {}

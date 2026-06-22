@@ -44,7 +44,8 @@ import { PaystackModule }
 import { ElectionManagementModule }
   from './modules/election-management/election-management.module';
 
-
+import { ScheduleModule } from '@nestjs/schedule';
+  
 function requireEnv(
   config: ConfigService,
   key: string,
@@ -71,40 +72,36 @@ function requireEnv(
 
     ConfigModule.forRoot({
       isGlobal: true,
-
       envFilePath: [
         '.env.local',
         '.env',
       ],
     }),
 
+    // =====================================
+    // CRON / SCHEDULED JOBS
+    // =====================================
+    ScheduleModule.forRoot(),
 
     ThrottlerModule.forRoot([
       {
         ttl: 60,
-
         limit: 200,
       },
     ]),
 
-
     // =====================================
-    // 🔥 ORACLE CONFIG (RENDER SAFE)
+    // ORACLE CONFIG
     // =====================================
-
     TypeOrmModule.forRootAsync({
-
       imports: [
         ConfigModule,
       ],
-
       inject: [
         ConfigService,
       ],
-
       useFactory: (
-        config:
-          ConfigService,
+        config: ConfigService,
       ) => {
 
         const connectString =
@@ -114,33 +111,14 @@ function requireEnv(
           );
 
         const isCloud =
-          connectString.includes(
-            'adb.',
-          ) ||
-
-          connectString.includes(
-            '_high',
-          ) ||
-
-          connectString.includes(
-            '_medium',
-          ) ||
-
-          connectString.includes(
-            '_low',
-          );
-
-
-        // =====================================
-        // 🔵 ORACLE CLOUD AUTONOMOUS DB
-        // =====================================
+          connectString.includes('adb.') ||
+          connectString.includes('_high') ||
+          connectString.includes('_medium') ||
+          connectString.includes('_low');
 
         if (isCloud) {
-
           return {
-
-            type:
-              'oracle',
+            type: 'oracle',
 
             connectString,
 
@@ -156,61 +134,34 @@ function requireEnv(
                 'DB_PASSWORD',
               ),
 
-
             extra: {
+              ssl: true,
 
-  ssl: true,
+              sslServerDnMatch: true,
 
-  sslServerDnMatch:
-    true,
+              connectTimeout: 30000,
 
-  connectTimeout:
-    30000,
+              poolMin: 5,
+              poolMax: 25,
+              poolIncrement: 1,
 
-  // ==========================
-  // 🔥 CONNECTION POOLING
-  // ==========================
+              queueTimeout: 60000,
+            },
 
-  poolMin: 5,
+            poolSize: 25,
 
-  poolMax: 25,
+            synchronize: false,
 
-  poolIncrement: 1,
-
-  // wait before failing
-  queueTimeout:
-    60000,
-},
-
-// TypeORM pool
-poolSize:
-  25,
-
-
-            synchronize:
-              false,
-
-            autoLoadEntities:
-              true,
-
+            autoLoadEntities: true,
 
             logging:
-              process.env
-                .NODE_ENV !==
+              process.env.NODE_ENV !==
               'production',
           };
         }
 
-
-
-        // =====================================
-        // 🟢 LOCAL ORACLE XE
-        // =====================================
-
         return {
-
-          type:
-            'oracle',
+          type: 'oracle',
 
           connectString,
 
@@ -226,61 +177,39 @@ poolSize:
               'DB_PASSWORD',
             ),
 
-            extra: {
+          extra: {
+            poolMin: 1,
+            poolMax: 5,
+            poolIncrement: 1,
+          },
 
-              poolMin: 1,
+          synchronize: false,
 
-              poolMax: 5,
-
-              poolIncrement:
-                1,
-            },
-
-          synchronize:
-            false,
-
-          autoLoadEntities:
-            true,
+          autoLoadEntities: true,
 
           logging:
-            process.env
-              .NODE_ENV !==
+            process.env.NODE_ENV !==
             'production',
         };
       },
     }),
 
-
     AuthModule,
-
     CartModule,
-
     PaymentsModule,
-
     WebhooksModule,
-
     AdminModule,
-
     PublicModule,
-
     ReceiptsModule,
-
     PaystackModule,
-
     ElectionManagementModule,
   ],
 
-
   providers: [
-
     {
-      provide:
-        APP_GUARD,
-
-      useClass:
-        ThrottlerGuard,
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
-
 export class AppModule {}
