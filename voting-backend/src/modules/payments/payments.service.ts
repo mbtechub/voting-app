@@ -72,41 +72,77 @@ export class PaymentsService {
       createdAt: new Date(),
     });
 
-    await this.paymentRepo.save(payment);
+await this.paymentRepo.save(payment);
 
-    const userEmail =
-      (email && email.trim()) ||
-      (process.env.PAYSTACK_DEFAULT_EMAIL || '').trim();
+const userEmail =
+  (email && email.trim()) ||
+  (process.env.PAYSTACK_DEFAULT_EMAIL || '').trim();
 
-    if (!userEmail || !userEmail.includes('@')) {
-      throw new BadRequestException('Valid email required');
-    }
+if (!userEmail || !userEmail.includes('@')) {
+  await this.paymentRepo.delete({
+    paymentId: payment.paymentId,
+  });
 
-    const resp = await axios.post(
-      'https://api.paystack.co/transaction/initialize',
-      {
-        email: userEmail,
-        amount: Math.round(Number(cart.totalAmount) * 100),
-        reference: paystackRef,
+  throw new BadRequestException(
+    'Valid email required',
+  );
+}
 
-        // 🔥 FIXED: redirect goes to FRONTEND
-        callback_url: `${process.env.FRONTEND_BASE_URL}/receipt/${paystackRef}`,
-
-        currency: 'NGN',
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        },
-      },
-    );
-
-    return {
+try {
+  const resp = await axios.post(
+    'https://api.paystack.co/transaction/initialize',
+    {
+      email: userEmail,
+      amount: Math.round(
+        Number(cart.totalAmount) * 100,
+      ),
       reference: paystackRef,
-      authorization_url: resp.data.data.authorization_url,
-    };
+
+      callback_url:
+        `${process.env.FRONTEND_BASE_URL}/receipt/${paystackRef}`,
+
+      currency: 'NGN',
+    },
+    {
+      headers: {
+        Authorization:
+          `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      },
+    },
+  );
+
+  // =====================================
+  // Freeze cart ONLY after Paystack
+  // successfully creates payment session
+  // =====================================
+  cart.status = 'PAYMENT_PENDING';
+
+  await this.dataSource
+    .getRepository(Cart)
+    .save(cart);
+
+  return {
+    reference: paystackRef,
+    authorization_url:
+      resp.data.data.authorization_url,
+  };
+} catch (error: any) {
+  // Cleanup orphan payment record
+  try {
+    await this.paymentRepo.delete({
+      paymentId: payment.paymentId,
+    });
+  } catch {
+    // ignore cleanup errors
   }
 
+  throw new BadRequestException(
+    error?.response?.data?.message ||
+      error?.message ||
+      'Unable to initialize payment',
+  );
+}
+}
   // ===================================================
   // VERIFY TRANSACTION
   // ===================================================
@@ -191,8 +227,8 @@ export class PaymentsService {
       .update(rawBody)
       .digest('hex');
 
-    const a = Buffer.from(hash);
-    const b = Buffer.from(signature);
+    const a = Buffer.from(hash, 'hex');
+    const b = Buffer.from(signature, 'hex');
 
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       throw new UnauthorizedException('Invalid signature');
