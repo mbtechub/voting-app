@@ -279,34 +279,38 @@ try {
 
      for (const item of items) {
   await manager.query(
-    `
-    MERGE INTO ELECTION_RESULTS r
-    USING dual
-    ON (
-      r.ELECTION_ID = :1
-      AND r.CANDIDATE_ID = :2
+  `
+  MERGE INTO ELECTION_RESULTS r
+  USING dual
+  ON (
+    r.ELECTION_ID = :1
+    AND r.CANDIDATE_ID = :2
+  )
+  WHEN MATCHED THEN
+    UPDATE SET
+      VOTE_COUNT = r.VOTE_COUNT + :3
+  WHEN NOT MATCHED THEN
+    INSERT (
+      ELECTION_ID,
+      CANDIDATE_ID,
+      VOTE_COUNT
     )
-    WHEN MATCHED THEN
-      UPDATE SET
-        VOTE_COUNT = r.VOTE_COUNT + :3
-    WHEN NOT MATCHED THEN
-      INSERT (
-        ELECTION_ID,
-        CANDIDATE_ID,
-        VOTE_COUNT
-      )
-      VALUES (
-        :1,
-        :2,
-        :3
-      )
-    `,
-    [
-      Number(item.ELECTION_ID),
-      Number(item.CANDIDATE_ID),
-      Number(item.VOTE_QTY),
-    ],
-  );
+    VALUES (
+      :4,
+      :5,
+      :6
+    )
+  `,
+  [
+    Number(item.ELECTION_ID),   // :1
+    Number(item.CANDIDATE_ID),  // :2
+    Number(item.VOTE_QTY),      // :3
+
+    Number(item.ELECTION_ID),   // :4
+    Number(item.CANDIDATE_ID),  // :5
+    Number(item.VOTE_QTY),      // :6
+  ],
+);
 
   await manager.query(
     `
