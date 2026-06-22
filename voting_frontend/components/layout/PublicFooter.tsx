@@ -79,10 +79,20 @@ export default function PublicFooter() {
        
 
       {/* Bottom */}
-      <div className="border-t border-slate-800 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
-        © {new Date().getFullYear()} Business Automation Management System 
-        <p>Mide Bash</p>
-      </div>
+<div className="border-t border-slate-800 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
+  © {new Date().getFullYear()} Business Automation Management System
+
+  <p>
+    <a
+      href="https://wa.me/2348085745206?text=Hello%20Mide%20Bash,%20I%20am%20contacting%20you%20from%20the%20LASU%20Awards%20Voting%20Website."
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-green-500 hover:text-green-400 hover:underline"
+    >
+      Ayomide Obashola (Mide Bash)
+    </a>
+  </p>
+</div>
     </footer>
   );
 }

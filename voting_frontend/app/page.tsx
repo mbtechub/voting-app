@@ -176,15 +176,26 @@ export default function Home() {
       </section>
 
       {/* FOOTER */}
-      <footer>
-        <div className="border-t border-slate-200 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
+     <footer>
+  <div className="border-t border-slate-200 text-center text-xs sm:text-sm text-slate-500 py-5 px-4">
 
-          <p>© {new Date().getFullYear()} Business Automation Management System.</p>
-          <br />
-        <p>Mide Bash</p>
+    <p>
+      © {new Date().getFullYear()} Business Automation Management System.
+    </p>
 
-        </div>
-      </footer>
+    <br />
+
+    <a
+      href="https://wa.me/2348085745206?text=Hello%20Mide%20Bash,%20I%20am%20contacting%20you%20from%20the%20LASU%20Awards%20Voting%20Website."
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-medium text-green-600 hover:text-green-700 hover:underline transition-colors"
+    >
+      Ayomide Obashola (Mide Bash)
+    </a>
+
+  </div>
+</footer>
 
     </main>
   );

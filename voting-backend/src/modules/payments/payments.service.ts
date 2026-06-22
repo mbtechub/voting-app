@@ -261,54 +261,108 @@ try {
       cart.status = 'PAID';
       await manager.save(cart);
 
-      const items = await manager
-        .createQueryBuilder(CartItem, 'ci')
-        .where('ci.cartId = :cartId', { cartId: cart.cartId })
-        .getMany();
+     const items = await manager.query(
+  `
+  SELECT
+    CART_ITEM_ID,
+    CART_ID,
+    ELECTION_ID,
+    CANDIDATE_ID,
+    VOTE_QTY,
+    PRICE_PER_VOTE,
+    SUB_TOTAL
+  FROM CART_ITEMS
+  WHERE CART_ID = :1
+  `,
+  [cart.cartId],
+);
 
-      for (const item of items) {
-        await manager.query(
-          `
-          MERGE INTO ELECTION_RESULTS r
-          USING dual
-          ON (r.election_id = :1 AND r.candidate_id = :2)
-          WHEN MATCHED THEN
-            UPDATE SET vote_count = r.vote_count + :3
-          WHEN NOT MATCHED THEN
-            INSERT (election_id, candidate_id, vote_count)
-            VALUES (:1, :2, :3)
-          `,
-          [item.electionId, item.candidateId, item.voteQty],
-        );
+     for (const item of items) {
+  await manager.query(
+    `
+    MERGE INTO ELECTION_RESULTS r
+    USING dual
+    ON (
+      r.ELECTION_ID = :1
+      AND r.CANDIDATE_ID = :2
+    )
+    WHEN MATCHED THEN
+      UPDATE SET
+        VOTE_COUNT = r.VOTE_COUNT + :3
+    WHEN NOT MATCHED THEN
+      INSERT (
+        ELECTION_ID,
+        CANDIDATE_ID,
+        VOTE_COUNT
+      )
+      VALUES (
+        :1,
+        :2,
+        :3
+      )
+    `,
+    [
+      Number(item.ELECTION_ID),
+      Number(item.CANDIDATE_ID),
+      Number(item.VOTE_QTY),
+    ],
+  );
 
-        await manager.query(
-          `
-          INSERT INTO VOTE_LOGS
-          (REFERENCE, ELECTION_ID, CANDIDATE_ID, VOTE_QTY, STATUS)
-          VALUES (:1, :2, :3, :4, 'APPLIED')
-          `,
-          [ref, item.electionId, item.candidateId, item.voteQty],
-        );
-      }
+  await manager.query(
+    `
+    INSERT INTO VOTE_LOGS
+    (
+      REFERENCE,
+      ELECTION_ID,
+      CANDIDATE_ID,
+      VOTE_QTY,
+      STATUS
+    )
+    VALUES
+    (
+      :1,
+      :2,
+      :3,
+      :4,
+      'APPLIED'
+    )
+    `,
+    [
+      ref,
+      Number(item.ELECTION_ID),
+      Number(item.CANDIDATE_ID),
+      Number(item.VOTE_QTY),
+    ],
+  );
+}
 
-      // receipt generation (safe)
-      try {
-        if ('getReceiptByReference' in this.receiptsService) {
-          await (this.receiptsService as any).getReceiptByReference(ref);
-        }
-      } catch (err: any) {
-        console.warn('Receipt generation failed:', err?.message);
-      }
-    });
+// receipt generation (safe)
+try {
+  if ('getReceiptByReference' in this.receiptsService) {
+    await (this.receiptsService as any).getReceiptByReference(ref);
+  }
+} catch (err: any) {
+  console.warn(
+    'Receipt generation failed:',
+    err?.message,
+  );
+}
+
+}); // transaction
+
+} // markPaymentSuccess
+
+async recoverPaymentByReference(ref: string) {
+  const verify =
+    await this.verifyPaystackTransaction(ref);
+
+  if (verify?.data?.status === 'success') {
+    await this.markPaymentSuccess(
+      ref,
+      verify.data,
+    );
   }
 
-  async recoverPaymentByReference(ref: string) {
-    const verify = await this.verifyPaystackTransaction(ref);
-
-    if (verify?.data?.status === 'success') {
-      await this.markPaymentSuccess(ref, verify.data);
-    }
-
-    return { ok: true };
-  }
+  return { ok: true };
+}
 }

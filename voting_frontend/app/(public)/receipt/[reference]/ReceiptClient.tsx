@@ -399,10 +399,18 @@ const nomineeName =
   </button>
 </div>
 
-<p className="text-center text-xs text-gray-400 mt-8">
+<div className="text-center text-xs text-gray-400 mt-8">
   <p>Business Automation Management System.</p>
-        <p>Mide Bash</p>
-</p>
+
+  <a
+    href="https://wa.me/2348085745206?text=Hello%20Mide%20Bash,%20I%20am%20contacting%20you%20from%20the%20LASU%20Awards%20Voting%20Website."
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-green-600 hover:text-green-700 hover:underline transition-colors"
+  >
+    Ayomide Obashola (Mide) Bash
+  </a>
+</div>
     </div>
   );
 }
