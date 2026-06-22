@@ -500,16 +500,33 @@ export class WebhooksService {
 
       await manager.save(Payment, payment);
 
-      const cartStatus = String((cart as any).status || '').toUpperCase();
-      if (cartStatus === 'PENDING') {
-        (cart as any).status = isPartial ? 'PARTIALLY_APPLIED' : 'PAID';
-        await manager.save(Cart, cart);
-      } else {
-        if (isPartial && cartStatus !== 'PARTIALLY_APPLIED') {
-          (cart as any).status = 'PARTIALLY_APPLIED';
-          await manager.save(Cart, cart);
-        }
-      }
+      const cartStatus = String(
+  (cart as any).status || '',
+).toUpperCase();
+
+// =====================================
+// Move cart to final status after
+// successful webhook processing
+// =====================================
+if (
+  ['PENDING', 'PAYMENT_PENDING'].includes(
+    cartStatus,
+  )
+) {
+  (cart as any).status = isPartial
+    ? 'PARTIALLY_APPLIED'
+    : 'PAID';
+
+  await manager.save(Cart, cart);
+} else if (
+  isPartial &&
+  cartStatus !== 'PARTIALLY_APPLIED'
+) {
+  (cart as any).status =
+    'PARTIALLY_APPLIED';
+
+  await manager.save(Cart, cart);
+}
 
       // ✅ Snapshot rows: Poll title + Nominee name + outcomes
       const detailRows = await manager.query(
