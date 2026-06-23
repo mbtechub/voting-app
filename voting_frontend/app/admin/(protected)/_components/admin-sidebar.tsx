@@ -111,7 +111,7 @@ export default function AdminSidebar({
 
   const nav: NavItem[] = useMemo(
     () => [
-      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, superOnly: true },
+      //{ label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, superOnly: true },
       { label: 'Poll Management', href: '/admin/elections-crud', icon: Vote },
       //{ label: 'Poll Financials', href: '/admin/elections', icon: Wallet, superOnly: true },
       { label: 'Search Payment', href: '/admin/payments', icon: Search },
