@@ -113,11 +113,11 @@ export default function AdminSidebar({
     () => [
       { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, superOnly: true },
       { label: 'Poll Management', href: '/admin/elections-crud', icon: Vote },
-      { label: 'Poll Financials', href: '/admin/elections', icon: Wallet, superOnly: true },
+      //{ label: 'Poll Financials', href: '/admin/elections', icon: Wallet, superOnly: true },
       { label: 'Search Payment', href: '/admin/payments', icon: Search },
       { label: 'Payment Events', href: '/admin/webhooks', icon: Zap, superOnly: true },
       { label: 'Admin Users Management', href: '/admin/users', icon: Users, superOnly: true },
-      { label: 'Results', href: '/admin/results', icon: BarChart3, superOnly: true },
+      { label: 'Results', href: '/admin/results', icon: BarChart3 }, //superOnly: true },//
       { label: 'Audit Logs', href: '/admin/audit', icon: ClipboardList, superOnly: true },
     ],
     []

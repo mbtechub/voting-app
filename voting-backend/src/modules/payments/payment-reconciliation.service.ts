@@ -27,7 +27,11 @@ export class PaymentReconciliationService {
 
     private readonly paymentsService:
       PaymentsService,
-  ) {}
+  ) {
+    this.logger.log(
+      'Payment reconciliation job started',
+    );
+  }
 
   // =====================================
   // Every 5 minutes
@@ -48,8 +52,7 @@ export class PaymentReconciliationService {
           .where(
             'p.status = :status',
             {
-              status:
-                'INITIATED',
+              status: 'INITIATED',
             },
           )
           .andWhere(
@@ -58,11 +61,17 @@ export class PaymentReconciliationService {
               cutoff,
             },
           )
+          .orderBy(
+            'p.paymentId',
+            'ASC',
+          )
+          .take(100)
           .getMany();
 
-      if (
-        !pendingPayments.length
-      ) {
+      if (!pendingPayments.length) {
+        this.logger.log(
+          'No INITIATED payments found',
+        );
         return;
       }
 
