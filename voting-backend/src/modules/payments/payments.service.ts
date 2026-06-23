@@ -313,31 +313,50 @@ try {
 );
 
   await manager.query(
-    `
-    INSERT INTO VOTE_LOGS
-    (
-      REFERENCE,
-      ELECTION_ID,
-      CANDIDATE_ID,
-      VOTE_QTY,
-      STATUS
-    )
-    VALUES
-    (
-      :1,
-      :2,
-      :3,
-      :4,
-      'APPLIED'
-    )
-    `,
-    [
-      ref,
-      Number(item.ELECTION_ID),
-      Number(item.CANDIDATE_ID),
-      Number(item.VOTE_QTY),
-    ],
-  );
+`
+INSERT INTO VOTE_LOGS
+(
+  VOTE_LOG_ID,
+  CART_ID,
+  PAYMENT_ID,
+  REFERENCE,
+  ELECTION_ID,
+  CANDIDATE_ID,
+  VOTE_QTY,
+  PRICE_PER_VOTE,
+  SUB_TOTAL,
+  APPLY_STATUS,
+  CREATED_AT,
+  CART_ITEM_ID
+)
+VALUES
+(
+  SEQ_VOTE_ID.NEXTVAL,
+  :1,
+  :2,
+  :3,
+  :4,
+  :5,
+  :6,
+  :7,
+  :8,
+  'APPLIED',
+  SYSDATE,
+  :9
+)
+`,
+[
+  cart.cartId,
+  payment.paymentId,
+  ref,
+  Number(item.ELECTION_ID),
+  Number(item.CANDIDATE_ID),
+  Number(item.VOTE_QTY),
+  Number(item.PRICE_PER_VOTE),
+  Number(item.SUB_TOTAL),
+  Number(item.CART_ITEM_ID),
+],
+);
 }
 
 // receipt generation (safe)
