@@ -12,6 +12,7 @@ import {
   Users,
   BarChart3,
   ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import { normalizeRole, type AppRole } from '@/lib/auth/role';
 
@@ -35,11 +36,22 @@ type NavItem = {
   superOnly?: boolean;
 };
 
-function isActiveLink(pathname: string | null, href: string) {
+function isActiveLink(
+  pathname: string | null,
+  href: string,
+) {
   const p = pathname || '';
+
   if (!p) return false;
   if (p === href) return true;
-  if (href !== '/admin/dashboard' && p.startsWith(href + '/')) return true;
+
+  if (
+    href !== '/admin/dashboard' &&
+    p.startsWith(href + '/')
+  ) {
+    return true;
+  }
+
   return false;
 }
 
@@ -73,24 +85,32 @@ function NavLink({
 
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-          active ? 'bg-white/10' : 'bg-slate-100'
+          active
+            ? 'bg-white/10'
+            : 'bg-slate-100'
         }`}
       >
         <Icon size={18} />
       </div>
 
-      <span className="truncate">{label}</span>
+      <span className="truncate">
+        {label}
+      </span>
     </Link>
   );
 }
 
-function getRoleBadgeClass(role: AppRole) {
+function getRoleBadgeClass(
+  role: AppRole,
+) {
   if (role === 'SUPER_ADMIN') {
     return 'border-blue-200 bg-blue-100 text-blue-700';
   }
+
   if (role === 'ADMIN') {
     return 'border-slate-200 bg-slate-100 text-slate-700';
   }
+
   return 'border-gray-200 bg-gray-100 text-gray-600';
 }
 
@@ -101,26 +121,89 @@ export default function AdminSidebar({
 }) {
   const pathname = usePathname();
 
-  const [role, setRole] = useState<AppRole>('UNKNOWN');
-  const [loadingRole, setLoadingRole] = useState(true);
-  const [username, setUsername] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [role, setRole] =
+    useState<AppRole>('UNKNOWN');
 
-  const isSuper = useMemo(() => role === 'SUPER_ADMIN', [role]);
+  const [loadingRole, setLoadingRole] =
+    useState(true);
+
+  const [username, setUsername] =
+    useState('');
+
+  const [firstName, setFirstName] =
+    useState('');
+
+  const [lastName, setLastName] =
+    useState('');
+
+  const isSuper = useMemo(
+    () => role === 'SUPER_ADMIN',
+    [role],
+  );
 
   const nav: NavItem[] = useMemo(
     () => [
-      //{ label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, superOnly: true },
-      { label: 'Poll Management', href: '/admin/elections-crud', icon: Vote },
-      //{ label: 'Poll Financials', href: '/admin/elections', icon: Wallet, superOnly: true },
-      { label: 'Search Payment', href: '/admin/payments', icon: Search },
-      { label: 'Payment Events', href: '/admin/webhooks', icon: Zap, superOnly: true },
-      { label: 'Admin Users Management', href: '/admin/users', icon: Users, superOnly: true },
-      { label: 'Results', href: '/admin/results', icon: BarChart3 }, //superOnly: true },//
-      { label: 'Audit Logs', href: '/admin/audit', icon: ClipboardList, superOnly: true },
+      //{
+      //  label: 'Dashboard',
+      //  href: '/admin/dashboard',
+      //  icon: LayoutDashboard,
+      //  superOnly: true,
+      //},
+
+      {
+        label: 'Poll Management',
+        href: '/admin/elections-crud',
+        icon: Vote,
+      },
+
+      //{
+      //  label: 'Poll Financials',
+      //  href: '/admin/elections',
+      //  icon: Wallet,
+      //  superOnly: true,
+      //},
+
+      {
+        label: 'Search Payment',
+        href: '/admin/payments',
+        icon: Search,
+      },
+
+      {
+        label: 'Payment Events',
+        href: '/admin/webhooks',
+        icon: Zap,
+        superOnly: true,
+      },
+
+      {
+        label: 'Admin Users Management',
+        href: '/admin/users',
+        icon: Users,
+        superOnly: true,
+      },
+
+      {
+        label: 'Results',
+        href: '/admin/results',
+        icon: BarChart3,
+      },
+
+      //{
+        //label: 'Payment Recovery',
+        //href: '/admin/payment-recovery',
+        //icon: ShieldCheck,
+        //ssuperOnly: true,
+      //},
+
+      {
+        label: 'Audit Logs',
+        href: '/admin/audit',
+        icon: ClipboardList,
+        superOnly: true,
+      },
     ],
-    []
+    [],
   );
 
   const visibleNav = useMemo(() => {
@@ -129,30 +212,49 @@ export default function AdminSidebar({
     return nav
       .filter((x) => !x.superOnly)
       .filter((x) =>
-        ['/admin/elections-crud', '/admin/payments'].includes(x.href)
+        [
+          '/admin/elections-crud',
+          '/admin/payments',
+        ].includes(x.href),
       );
   }, [isSuper, nav]);
 
   const displayName = useMemo(() => {
-    const full = `${firstName} ${lastName}`.trim();
+    const full =
+      `${firstName} ${lastName}`.trim();
+
     if (full) return full;
 
     if (username.trim()) {
       return username
         .trim()
         .replace(/[_\-.]/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+        .replace(/\b\w/g, (c) =>
+          c.toUpperCase(),
+        );
     }
 
     return 'Admin User';
-  }, [firstName, lastName, username]);
+  }, [
+    firstName,
+    lastName,
+    username,
+  ]);
 
   const initials = useMemo(() => {
-    const parts = displayName.split(/\s+/).filter(Boolean);
+    const parts = displayName
+      .split(/\s+/)
+      .filter(Boolean);
+
     if (parts.length >= 2) {
-      return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+      return `${parts[0][0] || ''}${
+        parts[1][0] || ''
+      }`.toUpperCase();
     }
-    return displayName.slice(0, 2).toUpperCase();
+
+    return displayName
+      .slice(0, 2)
+      .toUpperCase();
   }, [displayName]);
 
   useEffect(() => {
@@ -162,32 +264,56 @@ export default function AdminSidebar({
       setLoadingRole(true);
 
       try {
-        const res = await fetch('/api/admin/auth/whoami', {
-          method: 'GET',
-          cache: 'no-store',
-          credentials: 'include',
-        });
+        const res = await fetch(
+          '/api/admin/auth/whoami',
+          {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'include',
+          },
+        );
 
-        const data = (await res.json().catch(() => null)) as WhoAmIStable | null;
+        const data =
+          (await res
+            .json()
+            .catch(() => null)) as
+            | WhoAmIStable
+            | null;
 
         if (cancelled) return;
 
-        // 🔥 HARD FAIL → prevents role loop
         if (!res.ok || !data?.ok) {
-          window.location.replace('/admin/login');
+          window.location.replace(
+            '/admin/login',
+          );
           return;
         }
 
-        setRole(normalizeRole(data.role));
-        setUsername(data.admin?.username || '');
-        setFirstName(data.admin?.firstName || '');
-        setLastName(data.admin?.lastName || '');
+        setRole(
+          normalizeRole(data.role),
+        );
+
+        setUsername(
+          data.admin?.username || '',
+        );
+
+        setFirstName(
+          data.admin?.firstName || '',
+        );
+
+        setLastName(
+          data.admin?.lastName || '',
+        );
       } catch {
         if (!cancelled) {
-          window.location.replace('/admin/login');
+          window.location.replace(
+            '/admin/login',
+          );
         }
       } finally {
-        if (!cancelled) setLoadingRole(false);
+        if (!cancelled) {
+          setLoadingRole(false);
+        }
       }
     }
 
@@ -200,13 +326,17 @@ export default function AdminSidebar({
 
   async function logout() {
     try {
-      await fetch('/api/admin/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await fetch(
+        '/api/admin/logout',
+        {
+          method: 'POST',
+          credentials: 'include',
+        },
+      );
     } finally {
-      // 🔥 replace prevents back navigation into protected pages
-      window.location.replace('/admin/login');
+      window.location.replace(
+        '/admin/login',
+      );
     }
   }
 
@@ -215,20 +345,29 @@ export default function AdminSidebar({
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 sm:p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white sm:h-12 sm:w-12">
-            {loadingRole ? '...' : initials}
+            {loadingRole
+              ? '...'
+              : initials}
           </div>
 
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-slate-900 sm:text-base">
-              {loadingRole ? 'Loading...' : displayName}
+              {loadingRole
+                ? 'Loading...'
+                : displayName}
             </p>
 
             <div
               className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${getRoleBadgeClass(
-                role
+                role,
               )}`}
             >
-              {role === 'UNKNOWN' ? 'Admin User' : role.replace('_', ' ')}
+              {role === 'UNKNOWN'
+                ? 'Admin User'
+                : role.replace(
+                    '_',
+                    ' ',
+                  )}
             </div>
           </div>
         </div>
@@ -237,7 +376,11 @@ export default function AdminSidebar({
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
         <nav className="grid grid-cols-1 gap-2">
           {visibleNav.map((item) => {
-            const active = isActiveLink(pathname, item.href);
+            const active =
+              isActiveLink(
+                pathname,
+                item.href,
+              );
 
             return (
               <NavLink
@@ -246,7 +389,9 @@ export default function AdminSidebar({
                 label={item.label}
                 icon={item.icon}
                 active={active}
-                onNavigate={onNavigate}
+                onNavigate={
+                  onNavigate
+                }
               />
             );
           })}
