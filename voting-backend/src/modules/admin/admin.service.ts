@@ -1200,4 +1200,20 @@ async getPublicCandidates(electionId: number) {
   return rows;
 }
 
+async getPendingRecoveries() {
+  return this.dataSource.query(`
+    SELECT
+      PAYMENT_ID   AS "paymentId",
+      CART_ID      AS "cartId",
+      PAYSTACK_REF AS "paystackRef",
+      AMOUNT       AS "amount",
+      STATUS       AS "status",
+      CREATED_AT   AS "createdAt",
+      PAID_AT      AS "paidAt"
+    FROM PAYMENTS
+    WHERE STATUS = 'INITIATED'
+    ORDER BY PAYMENT_ID DESC
+  `);
+}
+
 }

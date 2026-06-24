@@ -30,6 +30,26 @@ export class PaymentsService {
     private readonly receiptsService: ReceiptsService,
   ) {}
 
+  async getPendingRecoveries() {
+  const rows = await this.paymentRepo
+    .createQueryBuilder('p')
+    .select([
+      'p.paymentId AS "paymentId"',
+      'p.cartId AS "cartId"',
+      'p.paystackRef AS "paystackRef"',
+      'p.amount AS "amount"',
+      'p.status AS "status"',
+    ])
+    .where('p.status = :status', {
+      status: 'INITIATED',
+    })
+    .getRawMany();
+
+  console.log('PENDING RECOVERIES:', rows.length);
+
+  return rows;
+}
+  
   // ===================================================
   // INITIATE PAYMENT
   // ===================================================

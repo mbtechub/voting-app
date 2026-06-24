@@ -317,6 +317,13 @@ async exportWinners(
     return this.adminService.searchPayments(query);
   }
 
+  @Get('payments/recovery/pending')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.SUPER_ADMIN)
+async getPendingRecoveries() {
+  return this.adminService.getPendingRecoveries();
+}
+  
   @Get('dashboard/revenue-30d')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)

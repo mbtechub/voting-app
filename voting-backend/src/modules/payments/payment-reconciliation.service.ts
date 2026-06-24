@@ -65,7 +65,7 @@ export class PaymentReconciliationService {
             'p.paymentId',
             'ASC',
           )
-          .take(100)
+          .take(1000)
           .getMany();
 
       if (!pendingPayments.length) {
