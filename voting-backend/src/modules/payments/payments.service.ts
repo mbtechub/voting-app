@@ -29,7 +29,54 @@ export class PaymentsService {
     private readonly dataSource: DataSource,
     private readonly receiptsService: ReceiptsService,
   ) {}
+async getRecoveryCandidates() {
+  const initiatedPayments =
+    await this.paymentRepo
+      .createQueryBuilder('p')
+      .select([
+        'p.paymentId AS "paymentId"',
+        'p.cartId AS "cartId"',
+        'p.paystackRef AS "paystackRef"',
+        'p.amount AS "amount"',
+        'p.status AS "status"',
+      ])
+      .where('p.status = :status', {
+        status: 'INITIATED',
+      })
+      .orderBy('p.paymentId', 'DESC')
+.getRawMany();
 
+  const candidates: any[] = [];
+
+  for (const payment of initiatedPayments) {
+    try {
+      const verify =
+        await this.verifyPaystackTransaction(
+          payment.paystackRef,
+        );
+
+      if (
+        verify?.status === true &&
+        verify?.data?.status === 'success'
+      ) {
+        candidates.push({
+          ...payment,
+          paystackStatus:
+            verify.data.status,
+          paidAt:
+            verify.data.paid_at,
+        });
+      }
+    } catch (err) {
+      console.warn(
+        'Verification failed:',
+        payment.paystackRef,
+      );
+    }
+  }
+
+  return candidates;
+}
   async getPendingRecoveries() {
   const rows = await this.paymentRepo
     .createQueryBuilder('p')
@@ -406,4 +453,5 @@ async recoverPaymentByReference(ref: string) {
 
   return { ok: true };
 }
+
 }

@@ -230,9 +230,10 @@ export class PaymentsController {
   // -------------------------------
   // Payment Recovery Dashboard
   // -------------------------------
- @Get('recovery/pending')
+@Get('recovery/pending')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.SUPER_ADMIN)
-async getPendingRecoveries() {;
+async getPendingRecoveries() {
+  return this.paymentsService.getRecoveryCandidates();
 }
 }
