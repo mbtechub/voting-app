@@ -30,6 +30,10 @@ export class PaymentsService {
     private readonly receiptsService: ReceiptsService,
   ) {}
 async getRecoveryCandidates() {
+  console.log(
+    'GET RECOVERY CANDIDATES CALLED',
+  );
+
   const initiatedPayments =
     await this.paymentRepo
       .createQueryBuilder('p')
@@ -44,11 +48,21 @@ async getRecoveryCandidates() {
         status: 'INITIATED',
       })
       .orderBy('p.paymentId', 'DESC')
-.getRawMany();
+      .getRawMany();
+
+  console.log(
+    'INITIATED PAYMENTS:',
+    initiatedPayments.length,
+  );
 
   const candidates: any[] = [];
 
   for (const payment of initiatedPayments) {
+    console.log(
+      'VERIFYING:',
+      payment.paystackRef,
+    );
+
     try {
       const verify =
         await this.verifyPaystackTransaction(
@@ -61,19 +75,22 @@ async getRecoveryCandidates() {
       ) {
         candidates.push({
           ...payment,
-          paystackStatus:
-            verify.data.status,
-          paidAt:
-            verify.data.paid_at,
+          paystackStatus: verify.data.status,
+          paidAt: verify.data.paid_at,
         });
       }
     } catch (err) {
       console.warn(
-        'Verification failed:',
+        'Recovery check failed:',
         payment.paystackRef,
       );
     }
   }
+
+  console.log(
+    'RECOVERY CANDIDATES:',
+    candidates.length,
+  );
 
   return candidates;
 }

@@ -280,16 +280,22 @@ constructor(
       const items = await this.dataSource.query(
         `
         SELECT
-          cart_item_id   AS "cartItemId",
-          cart_id        AS "cartId",
-          election_id    AS "electionId",
-          candidate_id   AS "candidateId",
-          vote_qty       AS "voteQty",
-          price_per_vote AS "pricePerVote",
-          sub_total      AS "subTotal"
-        FROM cart_items
-        WHERE cart_id = :1
-        ORDER BY cart_item_id ASC
+    ci.cart_item_id      AS "cartItemId",
+    ci.cart_id           AS "cartId",
+    ci.election_id       AS "electionId",
+    e.title              AS "electionTitle",
+    ci.candidate_id      AS "candidateId",
+    c.name               AS "candidateName",
+    ci.vote_qty          AS "voteQty",
+    ci.price_per_vote    AS "pricePerVote",
+    ci.sub_total         AS "subTotal"
+FROM cart_items ci
+LEFT JOIN elections e
+       ON e.election_id = ci.election_id
+LEFT JOIN candidates c
+       ON c.candidate_id = ci.candidate_id
+WHERE ci.cart_id = :1
+ORDER BY ci.cart_item_id ASC
         `,
         [cartId],
       );
@@ -297,19 +303,25 @@ constructor(
       const voteLogs = await this.dataSource.query(
         `
         SELECT
-          vote_log_id   AS "voteLogId",
-          payment_id    AS "paymentId",
-          reference     AS "reference",
-          election_id   AS "electionId",
-          candidate_id  AS "candidateId",
-          vote_qty      AS "voteQty",
-          apply_status  AS "applyStatus",
-          skip_reason   AS "skipReason",
-          created_at    AS "createdAt",
-          cart_item_id  AS "cartItemId"
-        FROM vote_logs
-        WHERE payment_id = :1
-        ORDER BY vote_log_id ASC
+    vl.vote_log_id      AS "voteLogId",
+    vl.payment_id       AS "paymentId",
+    vl.reference        AS "reference",
+    vl.election_id      AS "electionId",
+    e.title             AS "electionTitle",
+    vl.candidate_id     AS "candidateId",
+    c.name              AS "candidateName",
+    vl.vote_qty         AS "voteQty",
+    vl.apply_status     AS "applyStatus",
+    vl.skip_reason      AS "skipReason",
+    vl.created_at       AS "createdAt",
+    vl.cart_item_id     AS "cartItemId"
+FROM vote_logs vl
+LEFT JOIN elections e
+       ON e.election_id = vl.election_id
+LEFT JOIN candidates c
+       ON c.candidate_id = vl.candidate_id
+WHERE vl.payment_id = :1
+ORDER BY vl.vote_log_id ASC
         `,
         [paymentId],
       );

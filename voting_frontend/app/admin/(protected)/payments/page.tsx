@@ -17,7 +17,9 @@ type ExplorerResponse = {
 type UiCartItem = {
   cartItemId: number;
   electionId: number;
+  electionTitle: string;
   candidateId: number;
+  candidateName: string;
   voteQty: number;
   pricePerVote: number;
   subTotal: number;
@@ -26,8 +28,13 @@ type UiCartItem = {
 type UiVoteLog = {
   voteLogId: number;
   reference: string;
+
   electionId: number;
+  electionTitle: string;
+
   candidateId: number;
+  candidateName: string;
+
   voteQty: number;
   applyStatus: string;
   skipReason: string | null;
@@ -57,26 +64,91 @@ function pick<T = any>(obj: any, keys: string[], fallback: T): T {
 
 function normalizeCartItem(it: any): UiCartItem {
   return {
-    cartItemId: toNum(pick(it, ['cartItemId', 'CART_ITEM_ID'], 0)),
-    electionId: toNum(pick(it, ['electionId', 'ELECTION_ID'], 0)),
-    candidateId: toNum(pick(it, ['candidateId', 'CANDIDATE_ID'], 0)),
-    voteQty: toNum(pick(it, ['voteQty', 'VOTE_QTY'], 0)),
-    pricePerVote: toNum(pick(it, ['pricePerVote', 'PRICE_PER_VOTE'], 0)),
-    subTotal: toNum(pick(it, ['subTotal', 'SUB_TOTAL'], 0)),
+    cartItemId: toNum(
+      pick(it, ['cartItemId', 'CART_ITEM_ID'], 0),
+    ),
+
+    electionId: toNum(
+      pick(it, ['electionId', 'ELECTION_ID'], 0),
+    ),
+
+    electionTitle: String(
+      pick(it, ['electionTitle', 'ELECTION_TITLE'], ''),
+    ),
+
+    candidateId: toNum(
+      pick(it, ['candidateId', 'CANDIDATE_ID'], 0),
+    ),
+
+    candidateName: String(
+      pick(it, ['candidateName', 'CANDIDATE_NAME'], ''),
+    ),
+
+    voteQty: toNum(
+      pick(it, ['voteQty', 'VOTE_QTY'], 0),
+    ),
+
+    pricePerVote: toNum(
+      pick(it, ['pricePerVote', 'PRICE_PER_VOTE'], 0),
+    ),
+
+    subTotal: toNum(
+      pick(it, ['subTotal', 'SUB_TOTAL'], 0),
+    ),
   };
 }
 
 function normalizeVoteLog(vl: any): UiVoteLog {
   return {
-    voteLogId: toNum(pick(vl, ['voteLogId', 'VOTE_LOG_ID'], 0)),
-    reference: String(pick(vl, ['reference', 'REFERENCE'], '')),
-    electionId: toNum(pick(vl, ['electionId', 'ELECTION_ID'], 0)),
-    candidateId: toNum(pick(vl, ['candidateId', 'CANDIDATE_ID'], 0)),
-    voteQty: toNum(pick(vl, ['voteQty', 'VOTE_QTY'], 0)),
-    applyStatus: String(pick(vl, ['applyStatus', 'APPLY_STATUS'], '')),
-    skipReason: pick(vl, ['skipReason', 'SKIP_REASON'], null),
-    createdAt: pick(vl, ['createdAt', 'CREATED_AT'], null),
-    cartItemId: pick(vl, ['cartItemId', 'CART_ITEM_ID'], null),
+    voteLogId: toNum(
+      pick(vl, ['voteLogId', 'VOTE_LOG_ID'], 0),
+    ),
+
+    reference: String(
+      pick(vl, ['reference', 'REFERENCE'], ''),
+    ),
+
+    electionId: toNum(
+      pick(vl, ['electionId', 'ELECTION_ID'], 0),
+    ),
+
+    electionTitle: String(
+      pick(vl, ['electionTitle', 'ELECTION_TITLE'], ''),
+    ),
+
+    candidateId: toNum(
+      pick(vl, ['candidateId', 'CANDIDATE_ID'], 0),
+    ),
+
+    candidateName: String(
+      pick(vl, ['candidateName', 'CANDIDATE_NAME'], ''),
+    ),
+
+    voteQty: toNum(
+      pick(vl, ['voteQty', 'VOTE_QTY'], 0),
+    ),
+
+    applyStatus: String(
+      pick(vl, ['applyStatus', 'APPLY_STATUS'], ''),
+    ),
+
+    skipReason: pick(
+      vl,
+      ['skipReason', 'SKIP_REASON'],
+      null,
+    ),
+
+    createdAt: pick(
+      vl,
+      ['createdAt', 'CREATED_AT'],
+      null,
+    ),
+
+    cartItemId: pick(
+      vl,
+      ['cartItemId', 'CART_ITEM_ID'],
+      null,
+    ),
   };
 }
 
