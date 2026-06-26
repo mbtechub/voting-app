@@ -1,19 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { normalizeRole, type AppRole } from '@/lib/auth/role';
-
-type WhoAmIStable = {
-  ok: boolean;
-  role: AppRole;
-  admin: null | {
-    adminId?: number;
-    email?: string;
-    username?: string;
-    isActive?: boolean;
-  };
-  message?: string;
-};
 
 export default function AdminLoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -40,7 +27,9 @@ export default function AdminLoginPage() {
     try {
       const res = await fetch('/api/admin/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
         cache: 'no-store',
         body: JSON.stringify({
@@ -52,47 +41,60 @@ export default function AdminLoginPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data?.message || `Login failed (${res.status})`);
+        setError(
+          data?.message || `Login failed (${res.status})`,
+        );
         return;
       }
 
-      const whoamiRes = await fetch('/api/admin/auth/whoami', {
-        cache: 'no-store',
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
+      const whoamiRes = await fetch(
+        '/api/admin/auth/whoami',
+        {
+          cache: 'no-store',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
+        },
+      );
 
       if (!whoamiRes.ok) {
-        const whoamiText = await whoamiRes.text().catch(() => '');
+        const whoamiText =
+          await whoamiRes
+            .text()
+            .catch(() => '');
+
         setError(
           `Login succeeded but session not established (whoami ${whoamiRes.status}). ${whoamiText}`,
         );
         return;
       }
 
-      const who = (await whoamiRes.json().catch(() => ({}))) as any;
+      const who =
+        (await whoamiRes
+          .json()
+          .catch(() => ({}))) as any;
 
-const role = normalizeRole(who?.role);
+      const mustChangePassword =
+        who?.admin?.mustChangePassword === 'Y';
 
-const mustChangePassword =
-  who?.admin?.mustChangePassword === 'Y';
+      if (mustChangePassword) {
+        window.location.replace(
+          '/admin/change-password',
+        );
+        return;
+      }
 
-if (mustChangePassword) {
-  window.location.replace('/admin/change-password');
-  return;
-}
-
-if (role === 'SUPER_ADMIN') {
-  window.location.replace('/admin/dashboard');
-} else {
-  window.location.replace('/admin/home');
-}
+        // Redirect every authenticated admin to Results
+      window.location.replace('/admin/results');
+      return;
     } catch (err: any) {
       setError(err?.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   }
+
 
   return (
     <main className="bg-slate-50 px-6 py-10">

@@ -12,7 +12,6 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { normalizeRole, type AppRole } from '@/lib/auth/role';
-
 type DashboardSummary = {
   revenue: { total: number };
   payments: { byStatus: Array<{ status: string; count: number }> };
