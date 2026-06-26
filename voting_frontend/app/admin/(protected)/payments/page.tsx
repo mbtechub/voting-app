@@ -388,17 +388,20 @@ export default function AdminPaymentsPage() {
                                   }
                                 >
                                   <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {it.electionId}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {it.candidateId}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {it.voteQty}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {formatNaira(it.subTotal)}
-                                  </td>
+  {it.electionTitle || `#${it.electionId}`}
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {it.candidateName || `#${it.candidateId}`}
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {it.voteQty}
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {formatNaira(it.subTotal)}
+</td>
                                 </tr>
                               ))
                             ) : (
@@ -453,21 +456,35 @@ export default function AdminPaymentsPage() {
                                     `${vl.reference}-${vl.electionId}-${vl.candidateId}`
                                   }
                                 >
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {vl.applyStatus}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {vl.electionId}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {vl.candidateId}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {vl.voteQty}
-                                  </td>
-                                  <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                                    {vl.skipReason || '-'}
-                                  </td>
+                                  <td className="border-b border-slate-100 px-4 py-3 text-sm">
+  <span
+    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+      vl.applyStatus === 'APPLIED'
+        ? 'bg-green-100 text-green-700'
+        : vl.applyStatus === 'SKIPPED'
+        ? 'bg-red-100 text-red-700'
+        : 'bg-yellow-100 text-yellow-700'
+    }`}
+  >
+    {vl.applyStatus}
+  </span>
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {vl.electionTitle || `#${vl.electionId}`}
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {vl.candidateName || `#${vl.candidateId}`}
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {vl.voteQty}
+</td>
+
+<td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+  {vl.skipReason || '-'}
+</td>
                                 </tr>
                               ))
                             ) : (
