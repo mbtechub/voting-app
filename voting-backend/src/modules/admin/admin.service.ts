@@ -121,37 +121,52 @@ constructor(
     }));
   }
 
-  async getElectionFinancials() {
-    const rows = await this.dataSource.query(`
+ async getElectionFinancials() {
+  const rows = await this.dataSource.query(`
+    SELECT *
+    FROM (
       SELECT
-        e.ELECTION_ID  AS "electionId",
-        e.TITLE        AS "title",
-        e.STATUS       AS "status",
-        e.START_DATE   AS "startDate",
-        e.END_DATE     AS "endDate",
-        NVL(SUM(ci.SUB_TOTAL), 0) AS "revenue",
-        NVL(SUM(ci.VOTE_QTY), 0)  AS "votesSold"
-      FROM ELECTIONS e
-      LEFT JOIN CART_ITEMS ci ON ci.ELECTION_ID = e.ELECTION_ID
-      LEFT JOIN CARTS c ON c.CART_ID = ci.CART_ID
-      LEFT JOIN PAYMENTS p
-        ON p.CART_ID = c.CART_ID
-       AND p.STATUS IN ('SUCCESS', 'PARTIALLY_APPLIED')
-      GROUP BY
-        e.ELECTION_ID, e.TITLE, e.STATUS, e.START_DATE, e.END_DATE
-      ORDER BY e.ELECTION_ID DESC
-    `);
+        e.ELECTION_ID AS "electionId",
+        e.TITLE       AS "title",
+        e.STATUS      AS "status",
+        e.START_DATE  AS "startDate",
+        e.END_DATE    AS "endDate",
 
-    return (rows || []).map((r: any) => ({
-      electionId: Number(r.electionId),
-      title: r.title,
-      status: r.status,
-      startDate: r.startDate,
-      endDate: r.endDate,
-      revenue: Number(r.revenue ?? 0),
-      votesSold: Number(r.votesSold ?? 0),
-    }));
-  }
+        NVL((
+          SELECT SUM(ci.SUB_TOTAL)
+          FROM CART_ITEMS ci
+          JOIN CARTS c
+            ON c.CART_ID = ci.CART_ID
+          JOIN PAYMENTS p
+            ON p.CART_ID = c.CART_ID
+           AND p.STATUS IN ('SUCCESS', 'PARTIALLY_APPLIED')
+          WHERE ci.ELECTION_ID = e.ELECTION_ID
+        ), 0) AS "revenue",
+
+        NVL((
+          SELECT SUM(r.VOTE_COUNT)
+          FROM ELECTION_RESULTS r
+          WHERE r.ELECTION_ID = e.ELECTION_ID
+        ), 0) AS "votesSold"
+
+      FROM ELECTIONS e
+    )
+    ORDER BY
+      "revenue" DESC,
+      "votesSold" DESC,
+      "electionId" DESC
+  `);
+
+  return rows.map((r: any) => ({
+    electionId: Number(r.electionId),
+    title: r.title,
+    status: r.status,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    revenue: Number(r.revenue ?? 0),
+    votesSold: Number(r.votesSold ?? 0),
+  }));
+}
 
   /* ============================================================
      EXECUTIVE DASHBOARD
@@ -372,7 +387,7 @@ ORDER BY vl.vote_log_id ASC
         e.title       AS "title",
         e.status      AS "status",
         NVL(SUM(ci.sub_total), 0) AS "totalRevenue",
-        NVL(SUM(ci.vote_qty), 0)  AS "totalVotes",
+        NVL(SUM(r.vote_count),0) AS "totalVotes"
         COUNT(DISTINCT p.payment_id) AS "totalPayments"
       FROM elections e
       LEFT JOIN cart_items ci ON ci.election_id = e.election_id
@@ -490,43 +505,77 @@ ORDER BY vl.vote_log_id ASC
     const limit = params.limit ?? 5;
 
     const rows = await this.dataSource.query(
-      `
-      SELECT
-        t."electionId",
-        t."electionTitle",
-        t."revenue",
-        t."votesSold",
-        t."paymentsCount"
-      FROM (
-        SELECT
-          e.election_id AS "electionId",
-          e.title       AS "electionTitle",
-          NVL(SUM(CASE WHEN p.payment_id IS NOT NULL THEN ci.sub_total ELSE 0 END), 0) AS "revenue",
-          NVL(SUM(CASE WHEN p.payment_id IS NOT NULL THEN ci.vote_qty  ELSE 0 END), 0) AS "votesSold",
-          COUNT(DISTINCT p.payment_id) AS "paymentsCount"
-        FROM elections e
-        LEFT JOIN cart_items ci ON ci.election_id = e.election_id
-        LEFT JOIN carts c ON c.cart_id = ci.cart_id
-        LEFT JOIN payments p
-          ON p.cart_id = c.cart_id
-         AND p.status IN ('SUCCESS', 'PARTIALLY_APPLIED')
-        GROUP BY e.election_id, e.title
-        ORDER BY
-          NVL(SUM(CASE WHEN p.payment_id IS NOT NULL THEN ci.sub_total ELSE 0 END), 0) DESC,
-          e.election_id ASC
-      ) t
-      WHERE ROWNUM <= :1
-      `,
-      [limit],
-    );
+  `
+  SELECT
+    t."electionId",
+    t."electionTitle",
+    t."revenue",
+    t."votesSold",
+    t."paymentsCount"
+  FROM (
+    SELECT
+      e.election_id AS "electionId",
+      e.title       AS "electionTitle",
 
-    return (rows || []).map((r: any) => ({
-      electionId: Number(r.electionId),
-      electionTitle: r.electionTitle,
-      revenue: Number(r.revenue ?? 0),
-      votesSold: Number(r.votesSold ?? 0),
-      paymentsCount: Number(r.paymentsCount ?? 0),
-    }));
+      NVL(
+        SUM(
+          CASE
+            WHEN p.payment_id IS NOT NULL
+            THEN ci.sub_total
+            ELSE 0
+          END
+        ),
+        0
+      ) AS "revenue",
+
+      NVL(SUM(r.vote_count), 0) AS "votesSold",
+
+      COUNT(DISTINCT p.payment_id) AS "paymentsCount"
+
+    FROM elections e
+
+    LEFT JOIN election_results r
+      ON r.election_id = e.election_id
+
+    LEFT JOIN cart_items ci
+      ON ci.election_id = e.election_id
+
+    LEFT JOIN carts c
+      ON c.cart_id = ci.cart_id
+
+    LEFT JOIN payments p
+      ON p.cart_id = c.cart_id
+     AND p.status IN ('SUCCESS', 'PARTIALLY_APPLIED')
+
+    GROUP BY
+      e.election_id,
+      e.title
+
+    ORDER BY
+      NVL(
+        SUM(
+          CASE
+            WHEN p.payment_id IS NOT NULL
+            THEN ci.sub_total
+            ELSE 0
+          END
+        ),
+        0
+      ) DESC,
+      e.election_id ASC
+  ) t
+  WHERE ROWNUM <= :1
+  `,
+  [limit],
+);
+
+return (rows || []).map((r: any) => ({
+  electionId: Number(r.electionId),
+  electionTitle: r.electionTitle,
+  revenue: Number(r.revenue ?? 0),
+  votesSold: Number(r.votesSold ?? 0),
+  paymentsCount: Number(r.paymentsCount ?? 0),
+}));
   }
 
   /* ============================================================
