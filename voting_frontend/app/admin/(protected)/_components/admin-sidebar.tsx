@@ -143,12 +143,12 @@ export default function AdminSidebar({
 
   const nav: NavItem[] = useMemo(
     () => [
-      //{
-      //  label: 'Dashboard',
-      //  href: '/admin/dashboard',
-      //  icon: LayoutDashboard,
-      //  superOnly: true,
-      //},
+      {
+        label: 'Dashboard',
+        href: '/admin/dashboard',
+        icon: LayoutDashboard,
+        superOnly: true,
+      },
 
       {
         label: 'Poll Management',
@@ -156,12 +156,12 @@ export default function AdminSidebar({
         icon: Vote,
       },
 
-      //{
-      //  label: 'Poll Financials',
-      //  href: '/admin/elections',
-      //  icon: Wallet,
-      //  superOnly: true,
-      //},
+      {
+        label: 'Poll Financials',
+        href: '/admin/elections',
+        icon: Wallet,
+        superOnly: true,
+      },
 
       {
         label: 'Search Payment',
@@ -189,12 +189,12 @@ export default function AdminSidebar({
         icon: BarChart3,
       },
 
-      //{
-        //label: 'Payment Recovery',
-        //href: '/admin/payment-recovery',
-        //icon: ShieldCheck,
-        //ssuperOnly: true,
-      //},
+      {
+        label: 'Payment Recovery',
+        href: '/admin/payment-recovery',
+        icon: ShieldCheck,
+        superOnly: true,
+      },
 
       {
         label: 'Audit Logs',
